@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session, joinedload
 
 import auth
@@ -43,6 +43,19 @@ def _check_code(db: Session, code: Optional[str], exclude_id: Optional[int] = No
         query = query.filter(models.Product.product_id != exclude_id)
     if query.first():
         raise HTTPException(status_code=400, detail=f"Ya existe un producto con el código '{code}'.")
+
+
+NEXT_CODE_NUMBER = text("SELECT nextval('product_code_seq')")
+
+
+def _next_code(db: Session) -> str:
+    """Siguiente código correlativo libre (000001, 000002...). Un contador de la base de datos garantiza
+    que nunca se repita ni se reutilice el de un producto eliminado; si alguien ya escribió a mano ese
+    mismo código, se salta al siguiente."""
+    while True:
+        code = f"{db.execute(NEXT_CODE_NUMBER).scalar_one():06d}"
+        if not db.query(models.Product.product_id).filter(models.Product.code == code).first():
+            return code
 
 
 def _check_category(db: Session, category_id: int):
@@ -176,7 +189,8 @@ def create_product(
     _check_category(db, product.category_id)
     _check_code(db, product.code)
 
-    new_product = models.Product(**product.model_dump())
+    # Si no se escribió un código, se asigna el siguiente correlativo
+    new_product = models.Product(**{**product.model_dump(), "code": product.code or _next_code(db)})
     db.add(new_product)
     db.flush()  # Genera el product_id
 
@@ -203,9 +217,9 @@ def update_product(
 ):
     product = _get_or_404(db, product_id)
     update_data = product_data.model_dump(exclude_unset=True)
-    for field in ("name", "price", "cost", "min_stock", "category_id", "is_active"):
+    for field in ("code", "name", "price", "cost", "min_stock", "category_id", "is_active"):
         if field in update_data and update_data[field] is None:
-            update_data.pop(field)  # Estos campos no pueden quedar vacíos
+            update_data.pop(field)  # Estos campos no pueden quedar vacíos (si se envían vacíos, se conserva el valor actual)
     if "category_id" in update_data:
         _check_category(db, update_data["category_id"])
     if "code" in update_data:

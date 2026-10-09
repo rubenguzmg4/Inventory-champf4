@@ -150,7 +150,7 @@ class ProductUpdate(BaseModel):
 
 class ProductResponse(ORMModel):
     product_id: int
-    code: Optional[str] = None
+    code: str
     name: str
     brand: Optional[str] = None
     description: Optional[str] = None

@@ -40,12 +40,13 @@ export default function ProductFormModal({ opened, onClose, product, categories,
       category_id: Number(form.category_id),
     };
     try {
+      let saved;
       if (editing) {
-        await api.put(`/products/${product.product_id}`, { ...payload, is_active: form.is_active });
+        saved = await api.put(`/products/${product.product_id}`, { ...payload, is_active: form.is_active });
       } else {
-        await api.post('/products', { ...payload, stock: Number(form.stock || 0) });
+        saved = await api.post('/products', { ...payload, stock: Number(form.stock || 0) });
       }
-      notifySuccess(editing ? 'Producto actualizado.' : 'Producto creado.');
+      notifySuccess(editing ? 'Producto actualizado.' : `Producto creado con el código ${saved.code}.`);
       onSaved?.();
       onClose();
     } catch (error) {
@@ -59,8 +60,10 @@ export default function ProductFormModal({ opened, onClose, product, categories,
     <Modal opened={opened} onClose={onClose} title={editing ? 'Editar producto' : 'Nuevo producto'} size="lg">
       <form onSubmit={submit}>
         <Stack>
-          <SimpleGrid cols={{ base: 1, sm: 3 }}>
-            <TextInput label="Código / código de barras" value={form.code} maxLength={50}
+          <SimpleGrid cols={{ base: 1, sm: 3 }} style={{ alignItems: 'end' }}>
+            <TextInput label="Código" value={form.code} maxLength={50}
+              placeholder={editing ? '' : 'Automático'} required={editing}
+              description={editing ? 'No puede quedar vacío' : 'Vacío = se asigna solo'}
               onChange={(e) => set('code')(e.target.value)} />
             <TextInput label="Nombre" required value={form.name} maxLength={150} style={{ gridColumn: 'span 2' }}
               onChange={(e) => set('name')(e.target.value)} data-autofocus />

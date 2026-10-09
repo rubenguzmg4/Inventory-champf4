@@ -140,6 +140,36 @@ def test_product_brand_and_filter(admin, catalog):
     assert admin.put(f"/api/products/{product_id}", json={"brand": ""}).json()["brand"] is None
 
 
+def test_product_codes_are_generated(admin):
+    category = admin.post("/api/categories", json={"name": "Varios"}).json()["category_id"]
+
+    def create(**extra):
+        response = admin.post("/api/products", json={"name": "Producto", "price": "1", "category_id": category, **extra})
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    # Sin código (o con espacios en blanco) se asigna el siguiente correlativo
+    assert [create()["code"], create(code="")["code"], create(code="   ")["code"]] == ["000001", "000002", "000003"]
+    # Un código escrito a mano (por ejemplo, de barras) se respeta
+    assert create(code="7591234567890")["code"] == "7591234567890"
+    # Si alguien escribió a mano el que tocaba, se salta al siguiente
+    create(code="000004")
+    assert create()["code"] == "000005"
+    # Un producto eliminado no libera su número
+    last = create()
+    assert last["code"] == "000006"
+    assert admin.delete(f"/api/products/{last['product_id']}").json()["deleted"] is True
+    assert create()["code"] == "000007"
+
+    # Al editar: vacío conserva el código, uno nuevo lo reemplaza y no se admiten repetidos
+    product_id = create()["product_id"]
+    kept = admin.put(f"/api/products/{product_id}", json={"code": ""}).json()["code"]
+    assert kept == "000008"
+    assert admin.put(f"/api/products/{product_id}", json={"code": " ABC-1 "}).json()["code"] == "ABC-1"
+    assert admin.put(f"/api/products/{product_id}", json={"code": "000001"}).status_code == 400
+    assert admin.put(f"/api/products/{product_id}", json={"price": "2"}).json()["code"] == "ABC-1"
+
+
 def test_duplicate_code_rejected(admin, catalog):
     response = admin.post("/api/products", json={
         "code": "001", "name": "Otro", "price": "1", "category_id": catalog["category"]["category_id"],
@@ -502,3 +532,22 @@ def test_switching_to_automatic_while_offline(admin, monkeypatch):
 
 def test_only_admin_can_refresh_rate(cashier):
     assert cashier.post("/api/settings/exchange-rate/refresh").status_code == 403
+
+
+def test_concurrent_product_creation_gets_distinct_codes(admin, app):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from fastapi.testclient import TestClient
+
+    category = admin.post("/api/categories", json={"name": "Varios"}).json()["category_id"]
+
+    def create(n):
+        client = TestClient(app)
+        client.headers["Authorization"] = admin.headers["Authorization"]
+        return client.post("/api/products", json={"name": f"Producto {n}", "price": "1", "category_id": category})
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        responses = list(pool.map(create, range(8)))
+
+    assert [r.status_code for r in responses] == [201] * 8
+    assert sorted(r.json()["code"] for r in responses) == [f"{n:06d}" for n in range(1, 9)]

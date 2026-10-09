@@ -14,7 +14,8 @@ desde otros dispositivos de la misma red (celular, tablet u otra computadora) co
   Necesita internet; si falla, se conserva la última tasa y el inicio muestra un aviso.
 - **Facturas:** historial con filtros, impresión en hoja (A4/carta) o ticket de 80 mm, con el logo del local,
   y anulación (devuelve los productos al inventario).
-- **Productos y categorías:** marca (con filtro por marca y por categoría), precios, costos, margen, stock mínimo, ajustes de stock con motivo
+- **Productos y categorías:** código automático (000001, 000002… o el código de barras que escribas), marca
+  (con filtro por marca y por categoría), precios, costos, margen, stock mínimo, ajustes de stock con motivo
   (conteo físico, merma…) e historial de movimientos de cada producto (kárdex).
 - **Reposición de stock:** lista de productos agotados, bajo el mínimo o que se agotarán pronto, con la
   **cantidad sugerida a pedir** según las ventas de los últimos 30 días. Registro de entradas de mercancía.

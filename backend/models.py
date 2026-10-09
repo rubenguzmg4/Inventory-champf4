@@ -57,7 +57,8 @@ class Product(Base):
     __table_args__ = (CheckConstraint("stock >= 0", name="ck_products_stock_non_negative"),)
 
     product_id = Column(Integer, primary_key=True, index=True)
-    code = Column(String(50), unique=True, nullable=True, index=True)  # Código interno o de barras
+    # Código del producto: lo escribe el usuario (ej. código de barras) o se genera solo (000001, 000002...)
+    code = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(150), nullable=False)
     brand = Column(String(100), nullable=True, index=True)  # Marca del producto
     description = Column(Text, nullable=True)
