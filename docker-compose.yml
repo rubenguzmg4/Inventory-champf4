@@ -1,0 +1,38 @@
+# Inicia todo con:   docker compose up -d --build
+# Luego abre:        http://localhost:8000
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inventory_db
+      POSTGRES_USER: inventory
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-inventory}
+      TZ: ${TZ:-America/Caracas}
+    volumes:
+      # Los datos quedan guardados en este equipo, en un volumen de Docker
+      - db_data:/var/lib/postgresql/data
+      # Carpeta compartida para los respaldos (ver README)
+      - ./respaldos:/respaldos
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory -d inventory_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://inventory:${DB_PASSWORD:-inventory}@db:5432/inventory_db
+      SECRET_KEY: ${SECRET_KEY:-}
+      TZ: ${TZ:-America/Caracas}
+    ports:
+      # Puerto en el que se abre la aplicación (http://localhost:8000)
+      - "${APP_PORT:-8000}:8000"
+
+volumes:
+  db_data:

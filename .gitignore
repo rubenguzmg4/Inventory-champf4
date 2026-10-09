@@ -1,2 +1,15 @@
-/venv/
-__pycache__
+# Python
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Interfaz web
+node_modules/
+frontend/dist/
+
+# Configuración local y datos
+.env
+backend/.env
+respaldos/*
+!respaldos/.gitkeep

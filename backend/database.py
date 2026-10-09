@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Cadena de conexión: postgresql://usuario:contraseña@servidor:puerto/nombre_bd
-DATABASE_URL = "postgresql+psycopg2://invtory_user:REDACTED@localhost:5432/inventory_db"
-# Motor de conexión de SQLAlchemy
-engine = create_engine(DATABASE_URL)
+from config import DATABASE_URL
+
+# Motor de conexión de SQLAlchemy (pool_pre_ping evita errores si la BD se reinició)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # Sesión local para interactuar con la base de datos
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

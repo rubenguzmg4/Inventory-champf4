@@ -1,0 +1,148 @@
+/* ===== Estructura general ===== */
+.app-main {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+  min-height: 100vh;
+}
+
+.user-button {
+  padding: 4px 8px 4px 4px;
+  border-radius: var(--mantine-radius-xl);
+}
+.user-button:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* ===== Barra lateral ===== */
+.sidebar {
+  background: var(--mantine-color-body);
+}
+.sidebar-custom {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  border-color: var(--sidebar-border) !important;
+}
+.sidebar-brand {
+  border-bottom: 1px solid var(--sidebar-border, var(--mantine-color-default-border));
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+}
+.sidebar-footer {
+  border-top: 1px solid var(--sidebar-border, var(--mantine-color-default-border));
+}
+
+.nav-section {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 12px 6px;
+  color: var(--sidebar-dimmed, var(--mantine-color-dimmed));
+}
+
+.nav-link,
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  margin-bottom: 2px;
+  border-radius: var(--mantine-radius-md);
+  color: inherit;
+  text-decoration: none;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  transition: background 120ms ease;
+}
+.nav-link:hover {
+  background: var(--sidebar-hover, var(--mantine-color-default-hover));
+}
+.nav-link.active {
+  background: var(--sidebar-active, var(--mantine-primary-color-light));
+  color: var(--sidebar-fg, var(--mantine-primary-color-light-color));
+  font-weight: 600;
+}
+.nav-cta {
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-primary-color-contrast);
+  font-weight: 600;
+}
+.nav-cta:hover {
+  background: var(--mantine-primary-color-filled-hover);
+}
+
+/* ===== Login ===== */
+.login-hero {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 45%),
+    linear-gradient(135deg, var(--mantine-primary-color-filled), var(--mantine-color-brand-9));
+  color: var(--mantine-primary-color-contrast);
+}
+
+/* ===== Punto de venta ===== */
+.product-tile {
+  cursor: pointer;
+  transition: transform 100ms ease, box-shadow 100ms ease, border-color 100ms ease;
+  height: 100%;
+}
+.product-tile:hover {
+  border-color: var(--mantine-primary-color-filled);
+  transform: translateY(-1px);
+  box-shadow: var(--mantine-shadow-sm);
+}
+.product-tile[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ===== Impresión ===== */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .mantine-AppShell-main {
+    padding: 0 !important;
+  }
+}
+
+/* Encabezado que solo aparece al imprimir reportes */
+.print-only {
+  display: none;
+}
+@media print {
+  .print-only {
+    display: block;
+  }
+  .report-print .mantine-Card-root {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}
