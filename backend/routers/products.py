@@ -202,7 +202,7 @@ def update_product(
     return product
 
 
-@router.delete("/{product_id}", response_model=schemas.ProductDeleteResult)
+@router.delete("/{product_id}", response_model=schemas.DeleteResult)
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),

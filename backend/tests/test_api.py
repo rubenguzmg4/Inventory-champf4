@@ -65,6 +65,29 @@ def test_last_admin_is_protected(admin):
     assert response.status_code == 400
 
 
+def test_delete_user(admin, cashier, catalog):
+    users = admin.get("/api/users").json()
+    me = next(u for u in users if u["username"] == "admin")
+    cashier_id = next(u["user_id"] for u in users if u["username"] == "caja1")
+
+    assert admin.delete(f"/api/users/{me['user_id']}").status_code == 400  # No puede eliminarse a sí mismo
+    assert admin.delete("/api/users/9999").status_code == 404
+    assert cashier.delete(f"/api/users/{me['user_id']}").status_code == 403  # Solo administradores
+
+    # Un cajero con ventas se desactiva (se conserva quién emitió cada factura)
+    assert bill(cashier, [{"product_id": catalog["soda"]["product_id"], "quantity": 1}]).status_code == 201
+    result = admin.delete(f"/api/users/{cashier_id}").json()
+    assert result["deleted"] is False
+    assert next(u for u in admin.get("/api/users").json() if u["user_id"] == cashier_id)["is_active"] is False
+    assert admin.get("/api/bills").json()[0]["cashier_name"] == "caja1"
+
+    # Un usuario sin historial sí se elimina de verdad
+    admin.post("/api/users", json={"username": "nuevo", "password": "nuevo123"})
+    new_id = next(u["user_id"] for u in admin.get("/api/users").json() if u["username"] == "nuevo")
+    assert admin.delete(f"/api/users/{new_id}").json()["deleted"] is True
+    assert "nuevo" not in [u["username"] for u in admin.get("/api/users").json()]
+
+
 def test_change_password(admin):
     wrong = admin.put("/api/me/password", json={"current_password": "nope", "new_password": "nueva123"})
     assert wrong.status_code == 400

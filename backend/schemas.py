@@ -161,7 +161,8 @@ class ProductResponse(ORMModel):
     is_low_stock: bool
 
 
-class ProductDeleteResult(BaseModel):
+class DeleteResult(BaseModel):
+    """Resultado de eliminar algo que podría haberse desactivado en su lugar."""
     deleted: bool
     detail: str
 

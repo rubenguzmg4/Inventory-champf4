@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActionIcon, Badge, Button, Card, Group, Modal, PasswordInput, SegmentedControl, Stack, Switch, Table, Text, TextInput, Tooltip } from '@mantine/core';
-import { IconEdit, IconPlus } from '@tabler/icons-react';
+import { modals } from '@mantine/modals';
+import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../api';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +47,27 @@ export default function UsersPage() {
     }
   };
 
+  const remove = (user) => modals.openConfirmModal({
+    title: `¿Eliminar a "${user.username}"?`,
+    children: (
+      <Text size="sm">
+        Si este usuario ya emitió facturas o registró movimientos, no se borra: se desactiva para conservar el
+        historial y ya no podrá iniciar sesión.
+      </Text>
+    ),
+    labels: { confirm: 'Eliminar', cancel: 'Cancelar' },
+    confirmProps: { color: 'red' },
+    onConfirm: async () => {
+      try {
+        const result = await api.del(`/users/${user.user_id}`);
+        notifySuccess(result.detail);
+        reload();
+      } catch (error) {
+        notifyError(error);
+      }
+    },
+  });
+
   return (
     <>
       <PageHeader title="Usuarios" description="Quién puede entrar al sistema y qué puede hacer">
@@ -55,7 +77,7 @@ export default function UsersPage() {
         <Table.ScrollContainer minWidth={520}>
           <Table>
             <Table.Thead>
-              <Table.Tr><Table.Th>Usuario</Table.Th><Table.Th>Nombre</Table.Th><Table.Th>Rol</Table.Th><Table.Th>Estado</Table.Th><Table.Th w={60} /></Table.Tr>
+              <Table.Tr><Table.Th>Usuario</Table.Th><Table.Th>Nombre</Table.Th><Table.Th>Rol</Table.Th><Table.Th>Estado</Table.Th><Table.Th w={90} /></Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {users?.map((u) => (
@@ -64,7 +86,14 @@ export default function UsersPage() {
                   <Table.Td>{u.full_name}</Table.Td>
                   <Table.Td><Badge variant="light" color={u.role === 'admin' ? 'grape' : 'blue'}>{u.role === 'admin' ? 'Administrador' : 'Cajero'}</Badge></Table.Td>
                   <Table.Td><Badge variant="dot" color={u.is_active ? 'teal' : 'gray'}>{u.is_active ? 'Activo' : 'Desactivado'}</Badge></Table.Td>
-                  <Table.Td><Tooltip label="Editar"><ActionIcon variant="subtle" onClick={() => open(u)}><IconEdit size={16} /></ActionIcon></Tooltip></Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      <Tooltip label="Editar"><ActionIcon variant="subtle" onClick={() => open(u)}><IconEdit size={16} /></ActionIcon></Tooltip>
+                      {u.user_id !== me.user_id && (
+                        <Tooltip label="Eliminar"><ActionIcon variant="subtle" color="red" onClick={() => remove(u)}><IconTrash size={16} /></ActionIcon></Tooltip>
+                      )}
+                    </Group>
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

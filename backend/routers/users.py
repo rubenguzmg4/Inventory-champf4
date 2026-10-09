@@ -66,3 +66,36 @@ def update_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.delete("/{user_id}", response_model=schemas.DeleteResult)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """
+    Elimina un usuario. Si ya hizo ventas, entradas o ajustes, se desactiva en lugar de
+    eliminarse, para no perder quién emitió cada factura.
+    """
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    if user.user_id == current_user.user_id:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propio usuario.")
+
+    has_history = (
+        db.query(models.Bill).filter((models.Bill.user_id == user_id) | (models.Bill.voided_by_id == user_id)).first()
+        or db.query(models.Entry).filter(models.Entry.user_id == user_id).first()
+        or db.query(models.StockAdjustment).filter(models.StockAdjustment.user_id == user_id).first()
+    )
+    if has_history:
+        if not user.is_active:
+            return {"deleted": False, "detail": "El usuario tiene historial, por eso no se puede eliminar. Ya estaba desactivado."}
+        user.is_active = False
+        db.commit()
+        return {"deleted": False, "detail": "El usuario tiene facturas o movimientos registrados, así que se desactivó en lugar de eliminarse."}
+
+    db.delete(user)
+    db.commit()
+    return {"deleted": True, "detail": "Usuario eliminado."}
