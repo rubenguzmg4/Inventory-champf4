@@ -111,6 +111,31 @@ def test_product_search_ignores_accents(admin, catalog):
     assert admin.get("/api/products", params={"search": "100%"}).json() == []
 
 
+def test_product_brand_and_filter(admin, catalog):
+    category = catalog["category"]["category_id"]
+    polar = admin.post("/api/products", json={"name": "Cerveza", "brand": "  Polar ", "price": "1.2", "category_id": category})
+    assert polar.status_code == 201 and polar.json()["brand"] == "Polar"  # Se limpian los espacios
+    admin.post("/api/products", json={"name": "Malta", "brand": "polar", "price": "1", "category_id": category})
+    admin.post("/api/products", json={"name": "Jugo", "brand": "Yukery", "price": "2", "category_id": category})
+
+    # Un producto sin marca sigue siendo válido
+    assert catalog["soda"]["brand"] is None
+    # Las marcas se listan sin repetir por mayúsculas, ordenadas
+    assert admin.get("/api/products/brands").json() == ["Polar", "Yukery"]
+    # Filtro por marca (sin distinguir mayúsculas) y búsqueda por marca
+    assert {p["name"] for p in admin.get("/api/products", params={"brand": "POLAR"}).json()} == {"Cerveza", "Malta"}
+    assert [p["name"] for p in admin.get("/api/products", params={"search": "yuker"}).json()] == ["Jugo"]
+    # Combinado con la categoría
+    assert len(admin.get("/api/products", params={"brand": "polar", "category_id": category}).json()) == 2
+    assert admin.get("/api/products", params={"brand": "polar", "category_id": 999}).json() == []
+
+    # Editar y quitar la marca
+    product_id = polar.json()["product_id"]
+    assert admin.put(f"/api/products/{product_id}", json={"brand": "Regional"}).json()["brand"] == "Regional"
+    assert admin.put(f"/api/products/{product_id}", json={"price": "1.50"}).json()["brand"] == "Regional"  # No se toca si no se envía
+    assert admin.put(f"/api/products/{product_id}", json={"brand": ""}).json()["brand"] is None
+
+
 def test_duplicate_code_rejected(admin, catalog):
     response = admin.post("/api/products", json={
         "code": "001", "name": "Otro", "price": "1", "category_id": catalog["category"]["category_id"],

@@ -52,8 +52,9 @@ def _check_category(db: Session, category_id: int):
 
 @router.get("", response_model=List[schemas.ProductResponse])
 def list_products(
-    search: Optional[str] = Query(None, description="Buscar por nombre o código"),
+    search: Optional[str] = Query(None, description="Buscar por nombre, marca o código"),
     category_id: Optional[int] = Query(None, description="Filtrar por ID de categoría"),
+    brand: Optional[str] = Query(None, description="Filtrar por marca (sin distinguir mayúsculas)"),
     stock_status: Optional[Literal["low", "out"]] = Query(None, description="'low' = bajo mínimo, 'out' = agotado"),
     include_inactive: bool = Query(False, description="Incluir productos desactivados"),
     db: Session = Depends(get_db),
@@ -63,15 +64,30 @@ def list_products(
     if not include_inactive:
         query = query.filter(models.Product.is_active.is_(True))
     if search:
-        query = query.filter(search_filter(search, models.Product.name, models.Product.code))
+        query = query.filter(search_filter(search, models.Product.name, models.Product.code, models.Product.brand))
     if category_id:
         query = query.filter(models.Product.category_id == category_id)
+    if brand:
+        query = query.filter(func.lower(models.Product.brand) == brand.strip().lower())
     if stock_status == "out":
         query = query.filter(models.Product.stock <= 0)
     elif stock_status == "low":
         query = query.filter(or_(models.Product.stock <= 0, models.Product.stock <= models.Product.min_stock))
 
     return [_to_response(p, current_user) for p in query.order_by(models.Product.name).all()]
+
+
+@router.get("/brands", response_model=List[str])
+def list_brands(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Marcas registradas (una por nombre, sin repetir por mayúsculas), para filtros y sugerencias."""
+    rows = (
+        db.query(func.min(models.Product.brand))
+        .filter(models.Product.brand.isnot(None))
+        .group_by(func.lower(models.Product.brand))
+        .order_by(func.lower(func.min(models.Product.brand)))
+        .all()
+    )
+    return [brand for (brand,) in rows]
 
 
 @router.get("/replenishment", response_model=List[schemas.ReplenishmentItem])
@@ -121,6 +137,7 @@ def replenishment(db: Session = Depends(get_db), current_user: models.User = Dep
             product_id=p.product_id,
             code=p.code,
             name=p.name,
+            brand=p.brand,
             category_name=p.category_name,
             stock=p.stock,
             min_stock=p.min_stock,

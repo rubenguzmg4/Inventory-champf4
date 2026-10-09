@@ -29,16 +29,19 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('');
   const [debounced] = useDebouncedValue(search, 250);
   const [categoryId, setCategoryId] = useState(null);
+  const [brand, setBrand] = useState(null);
   const [stockStatus, setStockStatus] = useState('all');
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modal, setModal] = useState(null); // { type: 'form' | 'adjust' | 'entry', product }
   const [historyOf, setHistoryOf] = useState(null);
 
   const { data: categories } = useApi('/categories');
+  const { data: brands, reload: reloadBrands } = useApi('/products/brands');
   const { data: allProducts, reload: reloadAll } = useApi(isAdmin ? '/products' : null);
   const { data: products, loading, reload } = useApi('/products', {
     search: debounced,
     category_id: categoryId,
+    brand,
     stock_status: stockStatus === 'all' ? null : stockStatus,
     include_inactive: includeInactive || null,
   });
@@ -46,6 +49,7 @@ export default function ProductsPage() {
   const refresh = () => {
     reload();
     reloadAll();
+    reloadBrands();
   };
 
   const remove = (product) => modals.openConfirmModal({
@@ -67,6 +71,7 @@ export default function ProductsPage() {
   const exportCsv = () => downloadCsv('productos', [
     { label: 'Código', value: (p) => p.code },
     { label: 'Producto', value: (p) => p.name },
+    { label: 'Marca', value: (p) => p.brand },
     { label: 'Categoría', value: (p) => p.category_name },
     { label: 'Precio', value: (p) => p.price },
     ...(isAdmin ? [{ label: 'Costo', value: (p) => p.cost }] : []),
@@ -84,10 +89,12 @@ export default function ProductsPage() {
 
       <Card padding="md" mb="md">
         <Group gap="sm" wrap="wrap">
-          <TextInput placeholder="Buscar por nombre o código" leftSection={<IconSearch size={16} />} value={search}
+          <TextInput placeholder="Buscar por nombre, marca o código" leftSection={<IconSearch size={16} />} value={search}
             onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
           <Select placeholder="Todas las categorías" clearable w={200} value={categoryId} onChange={setCategoryId}
             data={(categories || []).map((c) => ({ value: String(c.category_id), label: c.name }))} />
+          <Select placeholder="Todas las marcas" clearable searchable w={200} value={brand} onChange={setBrand}
+            data={brands || []} nothingFoundMessage="Sin marcas" />
           <SegmentedControl value={stockStatus} onChange={setStockStatus}
             data={[{ value: 'all', label: 'Todos' }, { value: 'low', label: 'Bajo stock' }, { value: 'out', label: 'Agotados' }]} />
           {isAdmin && <Checkbox label="Ver desactivados" checked={includeInactive} onChange={(e) => setIncludeInactive(e.currentTarget.checked)} />}
@@ -98,12 +105,13 @@ export default function ProductsPage() {
         {loading && !products ? (
           <Center p="xl"><Loader /></Center>
         ) : (
-          <Table.ScrollContainer minWidth={720}>
+          <Table.ScrollContainer minWidth={820}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Código</Table.Th>
                   <Table.Th>Producto</Table.Th>
+                  <Table.Th>Marca</Table.Th>
                   <Table.Th ta="right">Precio</Table.Th>
                   {isAdmin && <Table.Th ta="right">Costo</Table.Th>}
                   <Table.Th ta="center">Stock</Table.Th>
@@ -113,7 +121,7 @@ export default function ProductsPage() {
               </Table.Thead>
               <Table.Tbody>
                 {products?.length === 0 && (
-                  <Table.Tr><Table.Td colSpan={7}><Text c="dimmed" ta="center" py="lg">No hay productos con estos filtros.</Text></Table.Td></Table.Tr>
+                  <Table.Tr><Table.Td colSpan={8}><Text c="dimmed" ta="center" py="lg">No hay productos con estos filtros.</Text></Table.Td></Table.Tr>
                 )}
                 {products?.map((p) => (
                   <Table.Tr key={p.product_id} opacity={p.is_active ? 1 : 0.55}>
@@ -125,6 +133,7 @@ export default function ProductsPage() {
                       </Group>
                       <Text size="xs" c="dimmed">{p.category_name}</Text>
                     </Table.Td>
+                    <Table.Td>{p.brand || <Text span c="dimmed">—</Text>}</Table.Td>
                     <Table.Td ta="right" fw={600} className="money">{money(p.price)}</Table.Td>
                     {isAdmin && <Table.Td ta="right" c="dimmed" className="money">{money(p.cost)}</Table.Td>}
                     <Table.Td ta="center"><StockBadge product={p} /></Table.Td>

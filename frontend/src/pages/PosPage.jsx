@@ -43,7 +43,7 @@ export default function PosPage() {
     const term = fold(search);
     return (products || []).filter((p) =>
       (category === 'all' || String(p.category_id) === category) &&
-      (!term || fold(p.name).includes(term) || fold(p.code || '').includes(term)));
+      (!term || fold(p.name).includes(term) || fold(p.code || '').includes(term) || fold(p.brand || '').includes(term)));
   }, [products, search, category]);
 
   const addProduct = (product) => {
@@ -160,7 +160,7 @@ export default function PosPage() {
                 <Card key={p.product_id} padding="sm" className="product-tile" data-disabled={p.stock <= 0 || undefined}
                   onClick={() => addProduct(p)}>
                   <Text fw={600} size="sm" lineClamp={2} mih={40}>{p.name}</Text>
-                  <Text size="xs" c="dimmed" truncate>{p.code || p.category_name}</Text>
+                  <Text size="xs" c="dimmed" truncate>{[p.brand, p.code].filter(Boolean).join(' · ') || p.category_name}</Text>
                   <Group justify="space-between" mt="xs" gap={4} wrap="nowrap">
                     <Text fw={700} c="brand" className="money">{money(p.price)}</Text>
                     <Badge size="sm" variant="light" title="Disponibles" style={{ flexShrink: 0 }} color={p.stock <= 0 ? 'red' : p.is_low_stock ? 'orange' : 'gray'}>

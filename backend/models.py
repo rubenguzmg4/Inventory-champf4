@@ -58,6 +58,7 @@ class Product(Base):
     product_id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=True, index=True)  # Código interno o de barras
     name = Column(String(150), nullable=False)
+    brand = Column(String(100), nullable=True, index=True)  # Marca del producto
     description = Column(Text, nullable=True)
     price = Column(Money, nullable=False)  # Precio de venta en USD ($)
     cost = Column(Money, nullable=False, default=0)  # Último costo de compra

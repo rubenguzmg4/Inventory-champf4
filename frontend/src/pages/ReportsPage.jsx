@@ -184,6 +184,7 @@ function InventoryReport() {
   const exportCsv = () => downloadCsv(`inventario_${dayjs().format('YYYY-MM-DD')}`, [
     { label: 'Código', value: (p) => p.code },
     { label: 'Producto', value: (p) => p.name },
+    { label: 'Marca', value: (p) => p.brand },
     { label: 'Categoría', value: (p) => p.category_name },
     { label: 'Stock', value: (p) => p.stock },
     { label: 'Costo', value: (p) => p.cost },
@@ -205,11 +206,11 @@ function InventoryReport() {
         <Group justify="flex-end" p="sm" className="no-print">
           <Button variant="default" size="xs" leftSection={<IconDownload size={14} />} onClick={exportCsv}>Exportar</Button>
         </Group>
-        <Table.ScrollContainer minWidth={760}>
+        <Table.ScrollContainer minWidth={860}>
           <Table striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Producto</Table.Th><Table.Th>Categoría</Table.Th><Table.Th ta="right">Stock</Table.Th>
+                <Table.Th>Producto</Table.Th><Table.Th>Marca</Table.Th><Table.Th>Categoría</Table.Th><Table.Th ta="right">Stock</Table.Th>
                 <Table.Th ta="right">Costo</Table.Th><Table.Th ta="right">Precio</Table.Th>
                 <Table.Th ta="right">Valor costo</Table.Th><Table.Th ta="right">Valor venta</Table.Th>
               </Table.Tr>
@@ -218,6 +219,7 @@ function InventoryReport() {
               {data.items.map((p) => (
                 <Table.Tr key={p.product_id}>
                   <Table.Td fw={500}>{p.name}</Table.Td>
+                  <Table.Td>{p.brand}</Table.Td>
                   <Table.Td c="dimmed">{p.category_name}</Table.Td>
                   <Table.Td ta="right" c={p.is_low_stock ? 'red' : undefined} fw={p.is_low_stock ? 700 : undefined}>{p.stock}</Table.Td>
                   <Table.Td ta="right" className="money">{money(p.cost)}</Table.Td>

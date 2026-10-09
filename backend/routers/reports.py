@@ -227,6 +227,7 @@ def inventory_report(db: Session = Depends(get_db)):
             "product_id": p.product_id,
             "code": p.code,
             "name": p.name,
+            "brand": p.brand,
             "category_name": p.category_name,
             "stock": p.stock,
             "min_stock": p.min_stock,

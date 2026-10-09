@@ -126,6 +126,7 @@ class CategoryResponse(ORMModel):
 class ProductCreate(BaseModel):
     code: Optional_(50) = None
     name: Required(150)
+    brand: Optional_(100) = None
     description: Optional_() = None
     price: MoneyIn
     cost: MoneyIn = Decimal("0")
@@ -138,6 +139,7 @@ class ProductUpdate(BaseModel):
     """El stock no se edita aquí: cambia con entradas, ventas o ajustes."""
     code: Optional_(50) = None
     name: Optional[Required(150)] = None
+    brand: Optional_(100) = None
     description: Optional_() = None
     price: Optional[MoneyIn] = None
     cost: Optional[MoneyIn] = None
@@ -150,6 +152,7 @@ class ProductResponse(ORMModel):
     product_id: int
     code: Optional[str] = None
     name: str
+    brand: Optional[str] = None
     description: Optional[str] = None
     price: MoneyOut
     cost: OptMoneyOut = None  # Solo visible para administradores
@@ -184,6 +187,7 @@ class ReplenishmentItem(BaseModel):
     product_id: int
     code: Optional[str] = None
     name: str
+    brand: Optional[str] = None
     category_name: Optional[str] = None
     stock: int
     min_stock: int

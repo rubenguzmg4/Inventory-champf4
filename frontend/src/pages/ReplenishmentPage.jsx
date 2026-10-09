@@ -43,6 +43,7 @@ export default function ReplenishmentPage() {
   const exportOrder = () => downloadCsv('pedido-reposicion', [
     { label: 'Código', value: (i) => i.code },
     { label: 'Producto', value: (i) => i.name },
+    { label: 'Marca', value: (i) => i.brand },
     { label: 'Categoría', value: (i) => i.category_name },
     { label: 'Stock', value: (i) => i.stock },
     { label: 'Mínimo', value: (i) => i.min_stock },
@@ -111,7 +112,7 @@ export default function ReplenishmentPage() {
                       <Table.Tr key={i.product_id}>
                         <Table.Td>
                           <Text size="sm" fw={600}>{i.name}</Text>
-                          <Text size="xs" c="dimmed">{[i.code, i.category_name].filter(Boolean).join(' · ')}</Text>
+                          <Text size="xs" c="dimmed">{[i.brand, i.code, i.category_name].filter(Boolean).join(' · ')}</Text>
                         </Table.Td>
                         <Table.Td><Badge variant="light" color={STATUS[i.status].color} style={{ flexShrink: 0 }} miw="max-content">{STATUS[i.status].label}</Badge></Table.Td>
                         <Table.Td ta="center" fw={700}>{i.stock}</Table.Td>

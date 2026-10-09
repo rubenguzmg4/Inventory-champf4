@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Switch, Text, TextInput, Textarea } from '@mantine/core';
+import { Autocomplete, Badge, Button, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Switch, Text, TextInput, Textarea } from '@mantine/core';
 import { api } from '../api';
 import { useMoney } from '../context/SettingsContext';
 import { notifyError, notifySuccess } from '../notify';
+import { useApi } from '../useApi';
 
-const EMPTY = { code: '', name: '', description: '', price: '', cost: '', stock: 0, min_stock: 0, category_id: null, is_active: true };
+const EMPTY = { code: '', name: '', brand: '', description: '', price: '', cost: '', stock: 0, min_stock: 0, category_id: null, is_active: true };
 
 export default function ProductFormModal({ opened, onClose, product, categories, onSaved }) {
   const editing = Boolean(product);
   const { symbol } = useMoney();
+  const { data: brands } = useApi(opened ? '/products/brands' : null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!opened) return;
     setForm(product
-      ? { ...EMPTY, ...product, code: product.code || '', description: product.description || '', category_id: String(product.category_id) }
+      ? { ...EMPTY, ...product, code: product.code || '', brand: product.brand || '', description: product.description || '', category_id: String(product.category_id) }
       : EMPTY);
   }, [opened, product]);
 
@@ -30,6 +32,7 @@ export default function ProductFormModal({ opened, onClose, product, categories,
     const payload = {
       code: form.code,
       name: form.name,
+      brand: form.brand,
       description: form.description,
       price: Number(form.price).toFixed(2),
       cost: Number(form.cost || 0).toFixed(2),
@@ -62,10 +65,14 @@ export default function ProductFormModal({ opened, onClose, product, categories,
             <TextInput label="Nombre" required value={form.name} maxLength={150} style={{ gridColumn: 'span 2' }}
               onChange={(e) => set('name')(e.target.value)} data-autofocus />
           </SimpleGrid>
-          <Select label="Categoría" required placeholder="Elegir categoría" searchable
-            data={(categories || []).map((c) => ({ value: String(c.category_id), label: c.name }))}
-            value={form.category_id} onChange={set('category_id')}
-            nothingFoundMessage="No hay categorías. Créalas en el menú Categorías." />
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <Select label="Categoría" required placeholder="Elegir categoría" searchable
+              data={(categories || []).map((c) => ({ value: String(c.category_id), label: c.name }))}
+              value={form.category_id} onChange={set('category_id')}
+              nothingFoundMessage="No hay categorías. Créalas en el menú Categorías." />
+            <Autocomplete label="Marca" placeholder="Ej. Polar (opcional)" maxLength={100}
+              data={brands || []} value={form.brand} onChange={set('brand')} />
+          </SimpleGrid>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <NumberInput label={`Precio de venta (${symbol})`} required min={0} decimalScale={2} fixedDecimalScale
               value={form.price} onChange={set('price')} />
