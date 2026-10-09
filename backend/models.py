@@ -3,6 +3,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -231,6 +232,12 @@ class Setting(Base):
     tax_rate = Column(Numeric(5, 2), nullable=False, default=0)
     secondary_currency_symbol = Column(String(5), nullable=False, default="Bs.")
     exchange_rate = Column(Numeric(14, 4), nullable=True)  # Vacío = no mostrar segunda moneda
+    # 'bcv' = se actualiza sola desde el Banco Central de Venezuela; 'manual' = la escribe el usuario
+    exchange_rate_mode = Column(String(10), nullable=False, default="bcv", server_default="bcv")
+    exchange_rate_source = Column(String(100), nullable=True)
+    exchange_rate_date = Column(Date, nullable=True)  # Fecha valor de la tasa
+    exchange_rate_updated_at = Column(DateTime(timezone=True), nullable=True)
+    exchange_rate_error = Column(Text, nullable=True)  # Último error al consultar (se borra al lograrlo)
     payment_methods = Column(JSON, nullable=False, default=lambda: list(DEFAULT_PAYMENT_METHODS))
     receipt_format = Column(String(10), nullable=False, default="a4")  # 'a4' o 'ticket'
 

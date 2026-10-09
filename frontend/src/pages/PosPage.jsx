@@ -11,7 +11,7 @@ import ClientPicker from '../components/ClientPicker';
 import { useMoney, useSettings } from '../context/SettingsContext';
 import { notifyError } from '../notify';
 import { useApi } from '../useApi';
-import { billNumber, fold, formatNumber } from '../utils/format';
+import { billNumber, fold, formatDate, formatNumber, formatRate } from '../utils/format';
 
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -230,7 +230,10 @@ export default function PosPage() {
                 </Group>
                 {rate > 0 && (
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">Tasa {formatNumber(rate)}</Text>
+                    <Text size="xs" c="dimmed">
+                      Tasa {settings.exchange_rate_mode === 'bcv' ? 'BCV ' : ''}{formatRate(rate)}
+                      {settings.exchange_rate_date ? ` · ${formatDate(settings.exchange_rate_date)}` : ''}
+                    </Text>
                     <Text size="sm" fw={600} className="money">{secondary(total)}</Text>
                   </Group>
                 )}

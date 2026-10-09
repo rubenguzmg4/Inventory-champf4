@@ -1,7 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+import pytest
 from conftest import ADMIN
+
+import exchange_rate
 
 TZ = "America/Caracas"
 
@@ -188,7 +192,7 @@ def test_category_with_products_cannot_be_deleted(admin, catalog):
 # ---------- Facturación ----------
 
 def test_bill_discounts_stock_and_computes_tax(admin, catalog):
-    admin.put("/api/settings", json={"tax_rate": "16", "exchange_rate": "40.5"})
+    admin.put("/api/settings", json={"tax_rate": "16", "exchange_rate_mode": "manual", "exchange_rate": "40.5"})
     soda, water = catalog["soda"]["product_id"], catalog["water"]["product_id"]
 
     response = bill(admin, [{"product_id": soda, "quantity": 3}, {"product_id": water, "quantity": 2}], payment_method="Pago móvil")
@@ -373,3 +377,128 @@ def test_concurrent_bills_never_oversell(admin, catalog, app):
 
     assert sorted(results) == [201, 400]
     assert stock_of(admin, soda) == 4
+
+
+# ---------- Tasa del BCV ----------
+
+# Respuestas reales (recortadas) de las dos fuentes, tomadas el 08/10/2026
+DOLARAPI_SAMPLE = {
+    "moneda": "USD", "fuente": "oficial", "nombre": "Dólar", "compra": None, "venta": None,
+    "promedio": 874.7321, "fechaActualizacion": "2026-10-08T00:00:00-04:00",
+}
+BCV_SAMPLE = """
+<div id="euro"><strong class="strong-tb"> 1.020,50000000</strong></div>
+<div id="dolar" class="col-sm-12 col-xs-12 "> <div class="field-content"> <div class="row recuadrotsmc">
+<div class="col-sm-6 col-xs-6"> <img src="/sites/default/files/dollar-04_2.png"> <span> USD</span> </div>
+<div class="col-sm-6 col-xs-6 centrado textp"> <strong class="strong-tb">875,65050000</strong> </div> </div> </div> </div>
+<div class="pull-right dinpro center"> Fecha Valor: <span class="date-display-single" property="dc:date"
+content="2026-10-09T00:00:00-04:00">Viernes, 09 Octubre 2026</span> <hr> </div>
+"""
+
+
+def fake_fetch(rate="874.7321", value_date=date(2026, 10, 8), source="BCV oficial (vía DolarApi.com)"):
+    def fetch(previous=None):
+        return exchange_rate.RateResult(Decimal(rate), value_date, source)
+    return fetch
+
+
+def failing_fetch(previous=None):
+    raise exchange_rate.RateError("sin conexión de prueba")
+
+
+def test_parse_sources():
+    api = exchange_rate.parse_dolarapi(DOLARAPI_SAMPLE)
+    assert (api.rate, api.value_date) == (Decimal("874.7321"), date(2026, 10, 8))
+
+    page = exchange_rate.parse_bcv(BCV_SAMPLE)  # Toma el dólar, no el euro que aparece antes
+    assert (page.rate, page.value_date) == (Decimal("875.6505"), date(2026, 10, 9))
+
+    with pytest.raises(exchange_rate.RateError):
+        exchange_rate.parse_dolarapi({"promedio": None})
+    with pytest.raises(exchange_rate.RateError):
+        exchange_rate.parse_dolarapi({"promedio": 0})
+    with pytest.raises(exchange_rate.RateError):
+        exchange_rate.parse_bcv("<html>cambió la página</html>")
+
+
+def test_fetch_falls_back_to_bcv_page(monkeypatch):
+    def api_down(url, verify=True):
+        raise OSError("sin respuesta")
+
+    monkeypatch.setattr(exchange_rate, "_get", api_down)
+    monkeypatch.setattr(exchange_rate, "_get_bcv_html", lambda: BCV_SAMPLE)
+    result = exchange_rate.fetch_rate(previous=Decimal("874.7321"))
+    assert result.rate == Decimal("875.6505") and result.source == exchange_rate.BCV_SOURCE
+
+    # Un valor muy distinto al anterior en la página (sin certificado verificado) se descarta
+    with pytest.raises(exchange_rate.RateError):
+        exchange_rate.fetch_rate(previous=Decimal("100"))
+
+    monkeypatch.setattr(exchange_rate, "_get_bcv_html", lambda: (_ for _ in ()).throw(OSError("caído")))
+    with pytest.raises(exchange_rate.RateError) as error:
+        exchange_rate.fetch_rate()
+    assert "conexión a internet" in str(error.value)
+
+
+def test_automatic_rate_flow(admin, catalog, monkeypatch):
+    settings = admin.get("/api/settings").json()
+    assert settings["exchange_rate_mode"] == "bcv" and settings["exchange_rate"] is None
+
+    monkeypatch.setattr(exchange_rate, "fetch_rate", fake_fetch())
+    refreshed = admin.post("/api/settings/exchange-rate/refresh")
+    assert refreshed.status_code == 200, refreshed.text
+    data = refreshed.json()
+    assert data["exchange_rate"] == 874.7321 and data["exchange_rate_date"] == "2026-10-08"
+    assert data["exchange_rate_source"] == "BCV oficial (vía DolarApi.com)"
+    assert data["exchange_rate_updated_at"] and data["exchange_rate_error"] is None
+
+    # En modo automático no se puede escribir la tasa a mano
+    assert admin.put("/api/settings", json={"exchange_rate": "1"}).json()["exchange_rate"] == 874.7321
+    # La factura guarda la tasa vigente al momento de facturar
+    created = bill(admin, [{"product_id": catalog["soda"]["product_id"], "quantity": 1}]).json()
+    assert created["exchange_rate"] == 874.7321
+
+    # Si falla la consulta, se conserva la última tasa y se muestra el error
+    monkeypatch.setattr(exchange_rate, "fetch_rate", failing_fetch)
+    failed = admin.post("/api/settings/exchange-rate/refresh")
+    assert failed.status_code == 502 and "sin conexión de prueba" in failed.json()["detail"]
+    kept = admin.get("/api/settings").json()
+    assert kept["exchange_rate"] == 874.7321 and kept["exchange_rate_error"] == "sin conexión de prueba"
+
+    # Al lograrlo de nuevo, el error desaparece
+    monkeypatch.setattr(exchange_rate, "fetch_rate", fake_fetch("875.6505", date(2026, 10, 9)))
+    assert admin.post("/api/settings/exchange-rate/refresh").json()["exchange_rate_error"] is None
+    assert admin.get("/api/settings").json()["exchange_rate"] == 875.6505
+
+
+def test_manual_rate_mode(admin, monkeypatch):
+    monkeypatch.setattr(exchange_rate, "fetch_rate", fake_fetch())
+    admin.post("/api/settings/exchange-rate/refresh")
+
+    manual = admin.put("/api/settings", json={"exchange_rate_mode": "manual", "exchange_rate": "900.5"}).json()
+    assert manual["exchange_rate_mode"] == "manual" and manual["exchange_rate"] == 900.5
+    assert manual["exchange_rate_source"] == "Manual" and manual["exchange_rate_date"] is None
+    # En modo manual no se consulta el BCV
+    assert admin.post("/api/settings/exchange-rate/refresh").status_code == 400
+    # Guardar sin cambiar la tasa no altera la fecha de actualización
+    stamp = admin.get("/api/settings").json()["exchange_rate_updated_at"]
+    assert admin.put("/api/settings", json={"exchange_rate": "900.5"}).json()["exchange_rate_updated_at"] == stamp
+    # Se puede dejar vacía para no mostrar la segunda moneda
+    assert admin.put("/api/settings", json={"exchange_rate": None}).json()["exchange_rate"] is None
+
+    # Volver a automático consulta de inmediato
+    monkeypatch.setattr(exchange_rate, "fetch_rate", fake_fetch("875.6505", date(2026, 10, 9)))
+    auto = admin.put("/api/settings", json={"exchange_rate_mode": "bcv"}).json()
+    assert auto["exchange_rate_mode"] == "bcv" and auto["exchange_rate"] == 875.6505
+
+
+def test_switching_to_automatic_while_offline(admin, monkeypatch):
+    admin.put("/api/settings", json={"exchange_rate_mode": "manual", "exchange_rate": "50"})
+    monkeypatch.setattr(exchange_rate, "fetch_rate", failing_fetch)
+    result = admin.put("/api/settings", json={"exchange_rate_mode": "bcv"})
+    assert result.status_code == 200  # El cambio de modo se guarda aunque no haya internet
+    assert result.json()["exchange_rate"] == 50 and result.json()["exchange_rate_error"]
+
+
+def test_only_admin_can_refresh_rate(cashier):
+    assert cashier.post("/api/settings/exchange-rate/refresh").status_code == 403

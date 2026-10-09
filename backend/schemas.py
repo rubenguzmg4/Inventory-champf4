@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, List, Literal, Optional
 
@@ -334,6 +334,11 @@ class SettingsResponse(PublicSettings):
     tax_rate: MoneyOut
     secondary_currency_symbol: str
     exchange_rate: OptMoneyOut = None
+    exchange_rate_mode: str
+    exchange_rate_source: Optional[str] = None
+    exchange_rate_date: Optional[date] = None
+    exchange_rate_updated_at: Optional[datetime] = None
+    exchange_rate_error: Optional[str] = None
     payment_methods: List[str]
     receipt_format: str
     reorder_cover_days: int
@@ -351,6 +356,7 @@ class SettingsUpdate(BaseModel):
     tax_rate: Optional[Decimal] = Field(None, ge=0, le=100, max_digits=5, decimal_places=2)
     secondary_currency_symbol: Optional[Required(5)] = None
     exchange_rate: Optional[Decimal] = Field(None, gt=0, max_digits=14, decimal_places=4)
+    exchange_rate_mode: Optional[Literal["bcv", "manual"]] = None
     payment_methods: Optional[List[Required(30)]] = Field(None, min_length=1)
     receipt_format: Optional[Literal["a4", "ticket"]] = None
     reorder_cover_days: Optional[int] = Field(None, ge=1, le=365)

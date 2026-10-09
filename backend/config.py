@@ -26,3 +26,7 @@ STATIC_DIR = Path(os.getenv("STATIC_DIR", BASE_DIR.parent / "frontend" / "dist")
 
 # Tamaño máximo del logo del negocio
 MAX_LOGO_BYTES = 2 * 1024 * 1024
+
+# Tasa del BCV: actualización automática en segundo plano (modo "automático" de Configuración)
+AUTO_UPDATE_RATE = os.getenv("AUTO_UPDATE_RATE", "1").lower() not in ("0", "false", "no")
+RATE_REFRESH_MINUTES = int(os.getenv("RATE_REFRESH_MINUTES", "60"))

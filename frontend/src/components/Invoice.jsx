@@ -1,5 +1,5 @@
 import { useSettings } from '../context/SettingsContext';
-import { billNumber, formatDateTime, formatMoney, formatNumber } from '../utils/format';
+import { billNumber, formatDateTime, formatMoney, formatNumber, formatRate } from '../utils/format';
 import './invoice.css';
 
 /**
@@ -78,7 +78,7 @@ export default function Invoice({ bill, format = 'a4' }) {
         <div className="invoice-total"><span>TOTAL</span><span>{money(bill.total)}</span></div>
         {rate > 0 && (
           <div className="invoice-secondary">
-            <span>Total en {settings.secondary_currency_symbol} (tasa {formatNumber(rate)})</span>
+            <span>Total en {settings.secondary_currency_symbol} (tasa {formatRate(rate)})</span>
             <span>{formatMoney(bill.total * rate, settings.secondary_currency_symbol)}</span>
           </div>
         )}

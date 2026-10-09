@@ -1,9 +1,12 @@
 import dayjs from 'dayjs';
 
 const numberFormat = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Las tasas de cambio se muestran con hasta 4 decimales (como las publica el BCV)
+const rateFormat = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const intFormat = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 });
 
 export const formatNumber = (value) => numberFormat.format(Number(value || 0));
+export const formatRate = (value) => rateFormat.format(Number(value || 0));
 export const formatInt = (value) => intFormat.format(Number(value || 0));
 export const formatMoney = (value, symbol = '$') => `${symbol} ${formatNumber(value)}`;
 export const formatDate = (iso) => (iso ? dayjs(iso).format('DD/MM/YYYY') : '');

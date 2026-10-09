@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, undefer
 
 import auth
 import config
+import exchange_rate
 import models
 import schemas
 from common import get_settings
@@ -48,14 +49,43 @@ def update_settings(
     # Estos campos no pueden quedar vacíos
     for field in ("business_name", "currency_symbol", "tax_name", "tax_rate", "secondary_currency_symbol",
                   "payment_methods", "receipt_format", "reorder_cover_days", "primary_color",
-                  "color_scheme", "radius"):
+                  "color_scheme", "radius", "exchange_rate_mode"):
         if field in changes and changes[field] is None:
             changes.pop(field)
+
+    previous_mode = settings.exchange_rate_mode
+    mode = changes.get("exchange_rate_mode", previous_mode)
+    if mode == "bcv":
+        changes.pop("exchange_rate", None)  # En modo automático la tasa no se escribe a mano
+    typed_rate = mode == "manual" and "exchange_rate" in changes and changes["exchange_rate"] != settings.exchange_rate
+
     for key, value in changes.items():
         setattr(settings, key, value)
+    if typed_rate or (mode == "manual" and previous_mode != "manual"):
+        settings.exchange_rate_source = "Manual"
+        settings.exchange_rate_date = None
+        settings.exchange_rate_updated_at = datetime.now(timezone.utc)
+        settings.exchange_rate_error = None
     db.commit()
+
+    if mode == "bcv" and previous_mode != "bcv":
+        try:  # Al activar el modo automático se consulta de una vez
+            exchange_rate.refresh_exchange_rate(db)
+        except exchange_rate.RateError:
+            pass  # El error queda guardado y se muestra en Configuración
     db.refresh(settings)
     return settings
+
+
+@router.post("/exchange-rate/refresh", response_model=schemas.SettingsResponse)
+def refresh_exchange_rate(db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_admin)):
+    """Consulta ahora mismo la tasa oficial del BCV (solo en modo automático)."""
+    if get_settings(db).exchange_rate_mode != "bcv":
+        raise HTTPException(status_code=400, detail="La tasa está en modo manual. Cambia a automática para consultarla.")
+    try:
+        return exchange_rate.refresh_exchange_rate(db)
+    except exchange_rate.RateError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
 
 
 @router.get("/logo")

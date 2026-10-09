@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from alembic import command
 from alembic.config import Config
@@ -8,6 +9,7 @@ from fastapi.responses import FileResponse
 
 import auth
 import config
+import exchange_rate
 from common import get_settings
 from database import SessionLocal
 from routers import account, bills, categories, clients, entries, products, reports, settings, users
@@ -28,7 +30,16 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         get_settings(db)
         auth.load_secret_key(db)
+
+    # Actualiza la tasa del BCV al iniciar y luego cada hora (si el modo es automático)
+    updater = None
+    if config.AUTO_UPDATE_RATE:
+        updater = asyncio.create_task(exchange_rate.rate_updater(config.RATE_REFRESH_MINUTES))
     yield
+    if updater:
+        updater.cancel()
+        with suppress(asyncio.CancelledError):
+            await updater
 
 
 # Inicialización de la Aplicación

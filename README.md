@@ -6,18 +6,22 @@ desde otros dispositivos de la misma red (celular, tablet u otra computadora) co
 
 ## ¿Qué incluye?
 
-- **Facturar (punto de venta):** búsqueda por nombre o con lector de código de barras, carrito,
-  cliente, forma de pago, impuesto (IVA) y total en una segunda moneda (por ejemplo bolívares con la tasa del día).
+- **Facturar (punto de venta):** búsqueda por nombre, marca o con lector de código de barras, carrito,
+  cliente, forma de pago, impuesto (IVA) y total en una segunda moneda (bolívares).
   Atajos: `F2` buscar, `F9` cobrar.
+- **Tasa del BCV:** se consulta sola al iniciar y luego cada hora (en Configuración → Facturación puedes ver
+  cuándo se actualizó, forzarla con "Actualizar ahora" o cambiar a modo manual y escribir la tasa que prefieras).
+  Necesita internet; si falla, se conserva la última tasa y el inicio muestra un aviso.
 - **Facturas:** historial con filtros, impresión en hoja (A4/carta) o ticket de 80 mm, con el logo del local,
   y anulación (devuelve los productos al inventario).
-- **Productos y categorías:** precios, costos, margen, stock mínimo, ajustes de stock con motivo
+- **Productos y categorías:** marca (con filtro por marca y por categoría), precios, costos, margen, stock mínimo, ajustes de stock con motivo
   (conteo físico, merma…) e historial de movimientos de cada producto (kárdex).
 - **Reposición de stock:** lista de productos agotados, bajo el mínimo o que se agotarán pronto, con la
   **cantidad sugerida a pedir** según las ventas de los últimos 30 días. Registro de entradas de mercancía.
 - **Reportes:** ventas por día, forma de pago, categoría, cajero y producto, ganancia bruta, inventario
   valorizado. Se pueden imprimir o descargar en CSV (se abre en Excel).
-- **Usuarios:** administradores y cajeros (los cajeros solo facturan y consultan).
+- **Usuarios:** administradores y cajeros (los cajeros solo facturan y consultan). Un usuario sin historial se
+  elimina; si ya emitió facturas se desactiva para no perder el historial.
 - **Personalización:** logo del local, color principal, color de la barra lateral, modo claro/oscuro y bordes.
 
 ## 1. Instalar Docker (una sola vez)

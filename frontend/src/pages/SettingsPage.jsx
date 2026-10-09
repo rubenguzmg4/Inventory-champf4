@@ -3,17 +3,18 @@ import {
   Alert, Badge, Button, Card, ColorInput, ColorSwatch, FileButton, Grid, Group, NumberInput, Paper, SegmentedControl,
   SimpleGrid, Stack, Tabs, TagsInput, Text, TextInput, Textarea, Title, UnstyledButton, useMantineColorScheme,
 } from '@mantine/core';
-import { IconBrush, IconBuildingStore, IconCheck, IconDeviceFloppy, IconPhotoUp, IconReceipt, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBrush, IconBuildingStore, IconCheck, IconDeviceFloppy, IconPhotoUp, IconReceipt, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { api } from '../api';
 import BusinessLogo from '../components/BusinessLogo';
 import PageHeader from '../components/PageHeader';
 import { useSettings } from '../context/SettingsContext';
 import { notifyError, notifySuccess } from '../notify';
 import { COLOR_PRESETS, sidebarVars } from '../theme';
+import { formatDate, formatDateTime, formatRate } from '../utils/format';
 
 const FIELDS = [
   'business_name', 'tax_id', 'address', 'phone', 'email', 'invoice_footer', 'currency_symbol', 'tax_name', 'tax_rate',
-  'secondary_currency_symbol', 'exchange_rate', 'payment_methods', 'receipt_format', 'reorder_cover_days',
+  'secondary_currency_symbol', 'exchange_rate', 'exchange_rate_mode', 'payment_methods', 'receipt_format', 'reorder_cover_days',
   'primary_color', 'sidebar_color', 'color_scheme', 'radius',
 ];
 
@@ -25,7 +26,48 @@ const RADIUS = [
 const SWATCHES = ['#228be6', '#1c7ed6', '#0c8599', '#12b886', '#2f9e44', '#82c91e', '#f59f00', '#e8590c', '#e03131', '#d6336c', '#ae3ec9', '#7048e8', '#4263eb', '#495057', '#212529'];
 
 function pick(settings) {
-  return Object.fromEntries(FIELDS.map((f) => [f, settings[f] ?? (f === 'payment_methods' ? [] : '')]));
+  const empty = { payment_methods: [], exchange_rate_mode: 'bcv' };
+  return Object.fromEntries(FIELDS.map((f) => [f, settings[f] ?? (f in empty ? empty[f] : '')]));
+}
+
+/** Estado de la tasa automática del BCV: valor vigente, de dónde salió y cuándo se consultó. */
+function RateStatus({ saved, active, onRefresh, refreshing }) {
+  const rate = Number(saved.exchange_rate);
+  return (
+    <Paper p="md" radius="md" bg="var(--mantine-color-default-hover)" withBorder={false}>
+      <Group justify="space-between" align="flex-start" wrap="wrap">
+        <div>
+          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Tasa vigente</Text>
+          {rate > 0 ? (
+            <Text fw={800} fz={28} className="money">
+              {formatRate(rate)} <Text span size="sm" c="dimmed" fw={500}>{saved.secondary_currency_symbol} por 1 {saved.currency_symbol}</Text>
+            </Text>
+          ) : (
+            <Text fw={600} c="dimmed" mt={4}>Todavía no se ha consultado</Text>
+          )}
+          {saved.exchange_rate_source && (
+            <Text size="sm" c="dimmed">
+              {saved.exchange_rate_source}
+              {saved.exchange_rate_date && ` · fecha valor ${formatDate(saved.exchange_rate_date)}`}
+            </Text>
+          )}
+          {saved.exchange_rate_updated_at && (
+            <Text size="xs" c="dimmed">Última consulta: {formatDateTime(saved.exchange_rate_updated_at)}</Text>
+          )}
+        </div>
+        <Button variant="light" leftSection={<IconRefresh size={16} />} loading={refreshing} disabled={!active} onClick={onRefresh}>
+          Actualizar ahora
+        </Button>
+      </Group>
+      {!active && <Text size="xs" c="orange" mt="xs">Guarda los cambios para activar la tasa automática.</Text>}
+      {saved.exchange_rate_error && (
+        <Alert color="orange" variant="light" icon={<IconAlertTriangle size={18} />} mt="sm">{saved.exchange_rate_error}</Alert>
+      )}
+      <Text size="xs" c="dimmed" mt="sm">
+        Se consulta al iniciar el sistema y luego cada hora. Para el día siguiente, el BCV publica su tasa en la tarde o noche.
+      </Text>
+    </Paper>
+  );
 }
 
 /** Vista previa en miniatura de cómo se verá la barra lateral y los botones. */
@@ -56,11 +98,12 @@ function ThemePreview({ form }) {
 }
 
 export default function SettingsPage() {
-  const { saved, setSettings, setPreview } = useSettings();
+  const { saved, setSettings, setPreview, loadFull } = useSettings();
   const { setColorScheme } = useMantineColorScheme();
   const [form, setForm] = useState(() => pick(saved));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const set = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
   const setText = (field) => (event) => set(field)(event.target.value);
 
@@ -81,6 +124,7 @@ export default function SettingsPage() {
         reorder_cover_days: Number(form.reorder_cover_days) || 15,
         sidebar_color: form.sidebar_color || null,
       };
+      if (payload.exchange_rate_mode === 'bcv') delete payload.exchange_rate; // La tasa automática no se escribe a mano
       const data = await api.put('/settings', payload);
       setSettings((s) => ({ ...s, ...data }));
       setForm(pick(data));
@@ -105,6 +149,21 @@ export default function SettingsPage() {
       notifyError(error);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const refreshRate = async () => {
+    setRefreshing(true);
+    try {
+      const data = await api.post('/settings/exchange-rate/refresh');
+      setSettings((s) => ({ ...s, ...data }));
+      setForm((f) => ({ ...f, exchange_rate: data.exchange_rate ?? '' }));
+      notifySuccess(`Tasa actualizada: ${formatRate(data.exchange_rate)}`, 'Tasa del BCV');
+    } catch (error) {
+      notifyError(error, 'Tasa del BCV');
+      loadFull().catch(() => {}); // Para mostrar el error guardado
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -244,12 +303,24 @@ export default function SettingsPage() {
             </Card>
             <Card padding="lg">
               <Title order={4} mb={4}>Segunda moneda (opcional)</Title>
-              <Text size="sm" c="dimmed" mb="md">Muestra el total también en otra moneda (por ejemplo bolívares) usando la tasa del día. Déjala vacía para no mostrarla.</Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <TextInput label="Símbolo" value={form.secondary_currency_symbol} onChange={setText('secondary_currency_symbol')} maxLength={5} />
-                <NumberInput label={`Tasa (${form.secondary_currency_symbol || 'Bs.'} por 1 ${form.currency_symbol || '$'})`} min={0}
-                  decimalScale={4} value={form.exchange_rate ?? ''} onChange={set('exchange_rate')} placeholder="Ej. 40,50" />
-              </SimpleGrid>
+              <Text size="sm" c="dimmed" mb="md">Muestra el total también en bolívares (u otra moneda) usando la tasa del día. Si no quieres mostrarla, usa el modo manual y deja la tasa vacía.</Text>
+              <Stack>
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <TextInput label="Símbolo" value={form.secondary_currency_symbol} onChange={setText('secondary_currency_symbol')} maxLength={5} />
+                  <div>
+                    <Text size="sm" fw={500} mb={4}>Origen de la tasa</Text>
+                    <SegmentedControl fullWidth value={form.exchange_rate_mode} onChange={set('exchange_rate_mode')}
+                      data={[{ value: 'bcv', label: 'Automática (BCV)' }, { value: 'manual', label: 'Manual' }]} />
+                  </div>
+                </SimpleGrid>
+                {form.exchange_rate_mode === 'bcv' ? (
+                  <RateStatus saved={saved} active={saved.exchange_rate_mode === 'bcv'} onRefresh={refreshRate} refreshing={refreshing} />
+                ) : (
+                  <NumberInput label={`Tasa (${form.secondary_currency_symbol || 'Bs.'} por 1 ${form.currency_symbol || '$'})`} min={0}
+                    decimalScale={4} value={form.exchange_rate ?? ''} onChange={set('exchange_rate')} placeholder="Ej. 874,73"
+                    description="Escribe la tasa que quieras usar; se mantiene hasta que la cambies" />
+                )}
+              </Stack>
             </Card>
             <Card padding="lg">
               <Title order={4} mb="md">Ventas</Title>

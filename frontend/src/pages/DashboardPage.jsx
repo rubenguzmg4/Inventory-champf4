@@ -29,6 +29,16 @@ export default function DashboardPage() {
         <Button leftSection={<IconCashRegister size={18} />} component={Link} to="/facturar">Nueva venta</Button>
       </PageHeader>
 
+      {settings.exchange_rate_mode === 'bcv' && settings.exchange_rate_error && (
+        <Alert icon={<IconAlertTriangle size={20} />} mb="lg" color="orange" variant="light" title="No se pudo actualizar la tasa del BCV">
+          {Number(settings.exchange_rate) > 0
+            ? `Se está usando la última tasa guardada (${Number(settings.exchange_rate).toLocaleString('es-VE')}). `
+            : 'Todavía no hay tasa guardada, por eso no se muestra el total en bolívares. '}
+          Revisa la conexión a internet o escribe la tasa a mano en{' '}
+          <Anchor component={Link} to="/configuracion">Configuración</Anchor>.
+        </Alert>
+      )}
+
       {!settings.logo_url && (
         <Alert icon={<IconPalette size={20} />} mb="lg" variant="light" title="Personaliza tu negocio">
           Sube el logo de tu local y elige tus colores en{' '}

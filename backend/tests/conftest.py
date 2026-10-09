@@ -16,6 +16,7 @@ if not TEST_DATABASE_URL:
 
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "clave-solo-para-pruebas-no-usar-en-produccion"
+os.environ["AUTO_UPDATE_RATE"] = "0"  # Las pruebas no deben consultar internet
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient  # noqa: E402
