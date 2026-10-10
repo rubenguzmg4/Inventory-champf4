@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, Center, ColorSwatch, Grid, Group, Loader, Progress, SimpleGrid, Table, Tabs, Text, Title } from '@mantine/core';
+import { Button, Card, Center, ColorSwatch, Grid, Group, Loader, Paper, Progress, Select, SimpleGrid, Table, Tabs, Text, Title } from '@mantine/core';
 import { AreaChart, BarChart, DonutChart } from '@mantine/charts';
 import {
   IconBuildingWarehouse, IconCash, IconChartBar, IconCoin, IconDownload, IconPackages, IconPrinter, IconReceipt2,
@@ -11,6 +11,7 @@ import DateRangeFilter from '../components/DateRangeFilter';
 import PageHeader from '../components/PageHeader';
 import StatCard from '../components/StatCard';
 import { useMoney, useSettings } from '../context/SettingsContext';
+import { EXAMPLES } from '../examples';
 import { useApi } from '../useApi';
 import { usePrint } from '../usePrint';
 import { downloadCsv } from '../utils/csv';
@@ -33,6 +34,137 @@ function PrintHeader({ title, subtitle }) {
   );
 }
 
+const truncate = (text, max = 24) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+function RankingChart({ title, subtitle, data, series, formatter }) {
+  return (
+    <Card padding="lg" h="100%">
+      <Title order={4}>{title}</Title>
+      <Text size="xs" c="dimmed" mb="md">{subtitle}</Text>
+      {data.length === 0 ? (
+        <Text c="dimmed" size="sm">Sin ventas en este período.</Text>
+      ) : (
+        <BarChart
+          h={Math.max(200, data.length * 38)} data={data} dataKey="name" orientation="vertical" series={series}
+          valueFormatter={formatter} withBarValueLabel withXAxis={false} gridAxis="none" tickLine="none"
+          barChartProps={{ margin: { right: 92 } }}
+          yAxisProps={{ width: 150, tickFormatter: (value) => truncate(String(value)) }}
+        />
+      )}
+    </Card>
+  );
+}
+
+/** Productos más vendidos: por unidades y por ingresos, con filtro por categoría. */
+function ProductRankings({ from, to }) {
+  const { money } = useMoney();
+  const [categoryId, setCategoryId] = useState(null);
+  const { data: categories } = useApi('/categories');
+  const { data, loading } = useApi(from && to ? '/reports/products' : null, {
+    date_from: from, date_to: to, tz: browserTz, category_id: categoryId,
+  });
+  const items = data?.items ?? [];
+  const byRevenue = items; // El servidor ya los entrega de mayor a menor ingreso
+  const byUnits = [...items].sort((a, b) => b.quantity - a.quantity || b.total - a.total || a.name.localeCompare(b.name, 'es'));
+  const where = data?.category ? ` en ${data.category}` : '';
+
+  const exportCsv = () => downloadCsv(`productos-vendidos_${from}_${to}`, [
+    { label: 'Código', value: (p) => p.code },
+    { label: 'Producto', value: (p) => p.name },
+    { label: 'Marca', value: (p) => p.brand },
+    { label: 'Categoría', value: (p) => p.category },
+    { label: 'Unidades', value: (p) => p.quantity },
+    { label: 'Ventas (sin impuesto)', value: (p) => p.total },
+    { label: 'Ganancia', value: (p) => p.profit },
+  ], byRevenue);
+
+  return (
+    <div style={{ marginBottom: 'var(--mantine-spacing-md)' }}>
+      <Group justify="space-between" align="flex-end" mb="sm">
+        <div>
+          <Title order={3}>Productos más vendidos</Title>
+          <Text size="sm" c="dimmed">Elige una categoría para ver, por ejemplo, el producto más vendido de perfumería.</Text>
+        </div>
+        <Select
+          placeholder={EXAMPLES.reportCategory} clearable searchable w={240} className="no-print"
+          data={(categories || []).map((c) => ({ value: String(c.category_id), label: c.name }))}
+          value={categoryId} onChange={setCategoryId} nothingFoundMessage="Sin categorías"
+        />
+      </Group>
+
+      {loading && !data ? (
+        <Center p="xl"><Loader /></Center>
+      ) : (
+        <>
+          {items.length > 0 && (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} mb="md">
+              <Paper p="md" radius="md">
+                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Más vendido{where} · por unidades</Text>
+                <Text fw={700} fz="lg" lineClamp={1}>{byUnits[0].name}</Text>
+                <Text size="sm" c="dimmed">{formatInt(byUnits[0].quantity)} unidades · {money(byUnits[0].total)}</Text>
+              </Paper>
+              <Paper p="md" radius="md">
+                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Mayor ingreso{where} · por dinero</Text>
+                <Text fw={700} fz="lg" lineClamp={1}>{byRevenue[0].name}</Text>
+                <Text size="sm" c="dimmed">{money(byRevenue[0].total)} · {formatInt(byRevenue[0].quantity)} unidades</Text>
+              </Paper>
+            </SimpleGrid>
+          )}
+
+          <Grid mb="md">
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <RankingChart
+                title={`Más vendidos por unidades${where}`} subtitle="Top 10 · cantidad de unidades vendidas"
+                data={byUnits.slice(0, 10).map((p) => ({ name: p.name, quantity: p.quantity }))}
+                series={[{ name: 'quantity', label: 'Unidades', color: 'teal.6' }]} formatter={(v) => formatInt(v)}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <RankingChart
+                title={`Más vendidos por ingresos${where}`} subtitle="Top 10 · dinero generado (sin impuesto)"
+                data={byRevenue.slice(0, 10).map((p) => ({ name: p.name, total: p.total }))}
+                series={[{ name: 'total', label: 'Ingresos', color: 'brand.6' }]} formatter={(v) => money(v)}
+              />
+            </Grid.Col>
+          </Grid>
+
+          <Card padding={0}>
+            <Group justify="space-between" p="md">
+              <Title order={4}>Detalle de productos vendidos{where}</Title>
+              <Button variant="subtle" size="xs" leftSection={<IconDownload size={14} />} onClick={exportCsv} className="no-print" disabled={!items.length}>CSV</Button>
+            </Group>
+            <Table.ScrollContainer minWidth={640}>
+              <Table striped>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Producto</Table.Th><Table.Th>Marca</Table.Th><Table.Th>Categoría</Table.Th>
+                    <Table.Th ta="right">Unidades</Table.Th><Table.Th ta="right">Ventas</Table.Th><Table.Th ta="right">Ganancia</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {items.length === 0 && (
+                    <Table.Tr><Table.Td colSpan={6}><Text c="dimmed" ta="center" size="sm">Sin ventas.</Text></Table.Td></Table.Tr>
+                  )}
+                  {items.map((p) => (
+                    <Table.Tr key={p.product_id}>
+                      <Table.Td>{p.name}</Table.Td>
+                      <Table.Td>{p.brand}</Table.Td>
+                      <Table.Td c="dimmed">{p.category}</Table.Td>
+                      <Table.Td ta="right">{formatInt(p.quantity)}</Table.Td>
+                      <Table.Td ta="right" className="money">{money(p.total)}</Table.Td>
+                      <Table.Td ta="right" className="money" c={p.profit >= 0 ? 'teal' : 'red'}>{money(p.profit)}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SalesReport({ range }) {
   const { money } = useMoney();
   const [from, to] = range;
@@ -45,14 +177,6 @@ function SalesReport({ range }) {
   const margin = s.subtotal > 0 ? (s.gross_profit / s.subtotal) * 100 : 0;
   const days = data.by_day.map((d) => ({ ...d, label: dayjs(d.date).format('DD/MM') }));
   const maxCashier = Math.max(...data.by_cashier.map((c) => c.total), 1);
-
-  const exportProducts = () => downloadCsv(`productos-vendidos_${from}_${to}`, [
-    { label: 'Código', value: (p) => p.code },
-    { label: 'Producto', value: (p) => p.name },
-    { label: 'Unidades', value: (p) => p.quantity },
-    { label: 'Ventas (sin impuesto)', value: (p) => p.total },
-    { label: 'Ganancia', value: (p) => p.profit },
-  ], data.top_products);
 
   const exportDays = () => downloadCsv(`ventas-por-dia_${from}_${to}`, [
     { label: 'Fecha', value: (d) => formatDate(d.date) },
@@ -97,10 +221,10 @@ function SalesReport({ range }) {
           <Card padding="lg" h="100%">
             <Title order={4} mb="md">Por forma de pago</Title>
             {data.by_payment_method.length === 0 ? <Text c="dimmed" size="sm">Sin ventas.</Text> : (
-              <Group align="center" wrap="nowrap" gap="lg">
+              <Group align="center" wrap="wrap" gap="lg">
                 <DonutChart size={160} thickness={26} withTooltip={false}
                   data={data.by_payment_method.map((p, i) => ({ name: p.method, value: p.total, color: PALETTE[i % PALETTE.length] }))} />
-                <Table style={{ flex: 1 }}>
+                <Table style={{ flex: 1, minWidth: 220 }}>
                   <Table.Tbody>
                     {data.by_payment_method.map((p, i) => (
                       <Table.Tr key={p.method}>
@@ -127,49 +251,21 @@ function SalesReport({ range }) {
         </Grid.Col>
       </Grid>
 
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card padding="lg" h="100%">
-            <Title order={4} mb="md">Por cajero</Title>
-            {data.by_cashier.length === 0 && <Text c="dimmed" size="sm">Sin ventas.</Text>}
-            {data.by_cashier.map((c) => (
-              <div key={c.user} style={{ marginBottom: 12 }}>
-                <Group justify="space-between" gap="xs"><Text size="sm" fw={500}>{c.user}</Text><Text size="sm" fw={600} className="money">{money(c.total)}</Text></Group>
-                <Progress value={(c.total / maxCashier) * 100} size="sm" mt={4} />
-                <Text size="xs" c="dimmed">{c.count} facturas</Text>
-              </div>
-            ))}
-          </Card>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 8 }}>
-          <Card padding={0} h="100%">
-            <Group justify="space-between" p="md">
-              <Title order={4}>Productos vendidos</Title>
-              <Button variant="subtle" size="xs" leftSection={<IconDownload size={14} />} onClick={exportProducts} className="no-print">CSV</Button>
-            </Group>
-            <Table.ScrollContainer minWidth={480}>
-              <Table striped>
-                <Table.Thead>
-                  <Table.Tr><Table.Th>Producto</Table.Th><Table.Th ta="right">Unidades</Table.Th><Table.Th ta="right">Ventas</Table.Th><Table.Th ta="right">Ganancia</Table.Th></Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {data.top_products.length === 0 && (
-                    <Table.Tr><Table.Td colSpan={4}><Text c="dimmed" ta="center" size="sm">Sin ventas.</Text></Table.Td></Table.Tr>
-                  )}
-                  {data.top_products.map((p) => (
-                    <Table.Tr key={p.product_id}>
-                      <Table.Td>{p.name}</Table.Td>
-                      <Table.Td ta="right">{formatInt(p.quantity)}</Table.Td>
-                      <Table.Td ta="right" className="money">{money(p.total)}</Table.Td>
-                      <Table.Td ta="right" className="money" c={p.profit >= 0 ? 'teal' : 'red'}>{money(p.profit)}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          </Card>
-        </Grid.Col>
-      </Grid>
+      <ProductRankings from={from} to={to} />
+
+      <Card padding="lg">
+        <Title order={4} mb="md">Por cajero</Title>
+        {data.by_cashier.length === 0 && <Text c="dimmed" size="sm">Sin ventas.</Text>}
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+          {data.by_cashier.map((c) => (
+            <div key={c.user}>
+              <Group justify="space-between" gap="xs"><Text size="sm" fw={500}>{c.user}</Text><Text size="sm" fw={600} className="money">{money(c.total)}</Text></Group>
+              <Progress value={(c.total / maxCashier) * 100} size="sm" mt={4} />
+              <Text size="xs" c="dimmed">{c.count} facturas</Text>
+            </div>
+          ))}
+        </SimpleGrid>
+      </Card>
     </div>
   );
 }

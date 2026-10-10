@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Button, Group, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
 import { api } from '../api';
 import { notifyError, notifySuccess } from '../notify';
+import { EXAMPLES } from '../examples';
 
-const REASONS = ['Conteo físico', 'Mercancía dañada', 'Producto vencido', 'Pérdida o robo', 'Consumo interno', 'Otro'];
+const REASONS = EXAMPLES.adjustReasons;
 
 /** Corrige el stock a mano y deja el motivo registrado en el historial. */
 export default function AdjustStockModal({ opened, onClose, product, onSaved }) {
@@ -54,7 +55,7 @@ export default function AdjustStockModal({ opened, onClose, product, onSaved }) 
             </Text>
           )}
           <Select label="Motivo" data={REASONS} value={reason} onChange={(v) => setReason(v || REASONS[0])} allowDeselect={false} />
-          <TextInput label="Detalle (opcional)" value={detail} onChange={(e) => setDetail(e.target.value)} />
+          <TextInput label="Detalle (opcional)" placeholder={EXAMPLES.adjustDetail} value={detail} onChange={(e) => setDetail(e.target.value)} />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>Cancelar</Button>
             <Button type="submit" loading={saving} disabled={diff === 0}>Guardar ajuste</Button>

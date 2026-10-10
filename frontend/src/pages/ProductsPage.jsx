@@ -16,6 +16,7 @@ import { useMoney } from '../context/SettingsContext';
 import { notifyError, notifySuccess } from '../notify';
 import { useApi } from '../useApi';
 import { downloadCsv } from '../utils/csv';
+import { EXAMPLES } from '../examples';
 
 export function StockBadge({ product }) {
   if (product.stock <= 0) return <Badge color="red" variant="filled">Agotado</Badge>;
@@ -89,11 +90,11 @@ export default function ProductsPage() {
 
       <Card padding="md" mb="md">
         <Group gap="sm" wrap="wrap">
-          <TextInput placeholder="Buscar por nombre, marca o código" leftSection={<IconSearch size={16} />} value={search}
+          <TextInput placeholder={EXAMPLES.productListSearch} leftSection={<IconSearch size={16} />} value={search}
             onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
-          <Select placeholder="Todas las categorías" clearable w={200} value={categoryId} onChange={setCategoryId}
+          <Select placeholder={EXAMPLES.productListCategory} clearable w={200} value={categoryId} onChange={setCategoryId}
             data={(categories || []).map((c) => ({ value: String(c.category_id), label: c.name }))} />
-          <Select placeholder="Todas las marcas" clearable searchable w={200} value={brand} onChange={setBrand}
+          <Select placeholder={EXAMPLES.productListBrand} clearable searchable w={200} value={brand} onChange={setBrand}
             data={brands || []} nothingFoundMessage="Sin marcas" />
           <SegmentedControl value={stockStatus} onChange={setStockStatus}
             data={[{ value: 'all', label: 'Todos' }, { value: 'low', label: 'Bajo stock' }, { value: 'out', label: 'Agotados' }]} />

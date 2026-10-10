@@ -40,3 +40,17 @@ export function percentChange(current, previous) {
   if (!previous) return null;
   return ((current - previous) / previous) * 100;
 }
+
+/**
+ * Montos en la segunda moneda (Bs.) de una factura o de un carrito, a partir de la tasa de cambio.
+ * El IVA se calcula sobre el subtotal ya convertido: así Subtotal + IVA = Total siempre cuadra en bolívares.
+ * Devuelve null si no hay tasa. Se usa tanto en el punto de venta como en la factura impresa.
+ */
+export function bsAmounts({ subtotal, tax_rate: taxRate, exchange_rate: rate }) {
+  const r = Number(rate);
+  if (!(r > 0)) return null;
+  const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const base = round2(Number(subtotal || 0) * r);
+  const tax = round2((base * Number(taxRate || 0)) / 100);
+  return { subtotal: base, tax, total: round2(base + tax) };
+}

@@ -9,6 +9,7 @@ import { useMoney } from '../context/SettingsContext';
 import { useApi } from '../useApi';
 import { downloadCsv } from '../utils/csv';
 import { billNumber, browserTz, datePresets, formatDateTime, formatInt } from '../utils/format';
+import { EXAMPLES } from '../examples';
 
 export default function BillsPage() {
   const navigate = useNavigate();
@@ -56,10 +57,10 @@ export default function BillsPage() {
 
       <Card padding="md" mb="md">
         <Group gap="sm" wrap="wrap">
-          <TextInput placeholder="N° de factura, cédula o cliente" leftSection={<IconSearch size={16} />}
+          <TextInput placeholder={EXAMPLES.billSearch} leftSection={<IconSearch size={16} />}
             value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
           <DateRangeFilter value={range} onChange={setRange} clearable />
-          <Select placeholder="Estado" clearable w={150} value={status} onChange={setStatus}
+          <Select placeholder={EXAMPLES.billStatus} clearable w={150} value={status} onChange={setStatus}
             data={[{ value: 'paid', label: 'Pagadas' }, { value: 'void', label: 'Anuladas' }]} />
         </Group>
       </Card>

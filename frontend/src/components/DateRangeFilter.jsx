@@ -2,6 +2,7 @@ import { Button, Group, Menu } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { IconCalendar, IconChevronDown } from '@tabler/icons-react';
 import { datePresets } from '../utils/format';
+import { EXAMPLES } from '../examples';
 
 /** Selector de período con atajos (Hoy, Este mes...). value = ['YYYY-MM-DD', 'YYYY-MM-DD'] */
 export default function DateRangeFilter({ value, onChange, clearable = false }) {
@@ -12,7 +13,7 @@ export default function DateRangeFilter({ value, onChange, clearable = false }) 
         value={value}
         onChange={onChange}
         valueFormat="DD/MM/YYYY"
-        placeholder="Elegir período"
+        placeholder={EXAMPLES.dateRange}
         leftSection={<IconCalendar size={16} />}
         clearable={clearable}
         allowSingleDateInRange

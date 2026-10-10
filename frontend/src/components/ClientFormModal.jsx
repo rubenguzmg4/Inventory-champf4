@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Group, Modal, SimpleGrid, Stack, TextInput, Textarea } from '@mantine/core';
 import { api } from '../api';
 import { notifyError, notifySuccess } from '../notify';
+import { EXAMPLES } from '../examples';
 
 const EMPTY = { client_id: '', name: '', lastname: '', phone: '', email: '', address: '' };
 
@@ -39,15 +40,15 @@ export default function ClientFormModal({ opened, onClose, client, initialId = '
     <Modal opened={opened} onClose={onClose} title={editing ? 'Editar cliente' : 'Nuevo cliente'} size="lg">
       <form onSubmit={submit}>
         <Stack>
-          <TextInput label="Cédula / RIF" placeholder="V-12345678" required disabled={editing} data-autofocus
+          <TextInput label="Cédula / RIF" placeholder={EXAMPLES.clientId} required disabled={editing} data-autofocus
             value={form.client_id} onChange={set('client_id')} maxLength={20} />
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput label="Nombre o razón social" required value={form.name} onChange={set('name')} maxLength={100} />
-            <TextInput label="Apellido" value={form.lastname} onChange={set('lastname')} maxLength={100} />
-            <TextInput label="Teléfono" value={form.phone || ''} onChange={set('phone')} maxLength={20} />
-            <TextInput label="Correo" type="email" value={form.email || ''} onChange={set('email')} maxLength={120} />
+            <TextInput label="Nombre o razón social" required placeholder={EXAMPLES.clientName} value={form.name} onChange={set('name')} maxLength={100} />
+            <TextInput label="Apellido" placeholder={EXAMPLES.clientLastname} value={form.lastname} onChange={set('lastname')} maxLength={100} />
+            <TextInput label="Teléfono" placeholder={EXAMPLES.clientPhone} value={form.phone || ''} onChange={set('phone')} maxLength={20} />
+            <TextInput label="Correo" type="email" placeholder={EXAMPLES.clientEmail} value={form.email || ''} onChange={set('email')} maxLength={120} />
           </SimpleGrid>
-          <Textarea label="Dirección" autosize minRows={2} value={form.address || ''} onChange={set('address')} />
+          <Textarea label="Dirección" placeholder={EXAMPLES.clientAddress} autosize minRows={2} value={form.address || ''} onChange={set('address')} />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>Cancelar</Button>
             <Button type="submit" loading={saving}>Guardar</Button>

@@ -6,6 +6,7 @@ import { api } from '../api';
 import PageHeader from '../components/PageHeader';
 import { notifyError, notifySuccess } from '../notify';
 import { useApi } from '../useApi';
+import { EXAMPLES } from '../examples';
 
 export default function CategoriesPage() {
   const { data: categories, reload } = useApi('/categories');
@@ -62,7 +63,7 @@ export default function CategoriesPage() {
             </Table.Thead>
             <Table.Tbody>
               {categories?.length === 0 && (
-                <Table.Tr><Table.Td colSpan={4}><Text c="dimmed" ta="center" py="lg">Crea tu primera categoría (ej. Bebidas, Víveres, Limpieza).</Text></Table.Td></Table.Tr>
+                <Table.Tr><Table.Td colSpan={4}><Text c="dimmed" ta="center" py="lg">{EXAMPLES.categoryEmpty}</Text></Table.Td></Table.Tr>
               )}
               {categories?.map((c) => (
                 <Table.Tr key={c.category_id}>
@@ -85,8 +86,8 @@ export default function CategoriesPage() {
       <Modal opened={editing !== null} onClose={() => setEditing(null)} title={editing?.category_id ? 'Editar categoría' : 'Nueva categoría'}>
         <form onSubmit={save}>
           <Stack>
-            <TextInput label="Nombre" required data-autofocus maxLength={100} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <Textarea label="Descripción" autosize minRows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <TextInput label="Nombre" required placeholder={EXAMPLES.categoryName} data-autofocus maxLength={100} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Textarea label="Descripción" placeholder={EXAMPLES.categoryDescription} autosize minRows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setEditing(null)}>Cancelar</Button>
               <Button type="submit" loading={saving}>Guardar</Button>

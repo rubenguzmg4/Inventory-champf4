@@ -21,7 +21,7 @@ export default function DashboardPage() {
   if (!data) return null;
 
   const chart = data.sales_by_day.map((d) => ({ ...d, label: dayjs(d.date).format('DD MMM') }));
-  const topMax = Math.max(...data.top_products.map((p) => p.total), 1);
+  const topMax = Math.max(...data.top_products.map((p) => p.quantity), 1);
 
   return (
     <>
@@ -69,17 +69,23 @@ export default function DashboardPage() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card padding="lg" h="100%">
-            <Title order={4} mb="md">Lo más vendido del mes</Title>
+            <Group justify="space-between" align="baseline" mb="md">
+              <div>
+                <Title order={4}>Lo más vendido del mes</Title>
+                <Text size="xs" c="dimmed">Por unidades vendidas</Text>
+              </div>
+              <Anchor component={Link} to="/reportes" size="sm">Ver reportes</Anchor>
+            </Group>
             {data.top_products.length === 0 && <Text c="dimmed" size="sm">Aún no hay ventas este mes.</Text>}
             <Stack gap="md">
               {data.top_products.map((p) => (
                 <div key={p.product_id}>
                   <Group justify="space-between" gap="xs" wrap="nowrap">
                     <Text size="sm" fw={500} truncate>{p.name}</Text>
-                    <Text size="sm" fw={600} className="money">{money(p.total)}</Text>
+                    <Text size="sm" fw={700} className="money">{formatInt(p.quantity)} uds.</Text>
                   </Group>
-                  <Progress value={(p.total / topMax) * 100} size="sm" mt={4} />
-                  <Text size="xs" c="dimmed">{formatInt(p.quantity)} unidades</Text>
+                  <Progress value={(p.quantity / topMax) * 100} size="sm" mt={4} />
+                  <Text size="xs" c="dimmed">Generó {money(p.total)}</Text>
                 </div>
               ))}
             </Stack>

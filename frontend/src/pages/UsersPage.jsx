@@ -7,6 +7,7 @@ import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { notifyError, notifySuccess } from '../notify';
 import { useApi } from '../useApi';
+import { EXAMPLES } from '../examples';
 
 const ROLES = [
   { value: 'cashier', label: 'Cajero' },
@@ -109,10 +110,10 @@ export default function UsersPage() {
         <form onSubmit={save}>
           <Stack>
             {!editing?.user_id && (
-              <TextInput label="Usuario" description="Sin espacios" required data-autofocus autoCapitalize="none" minLength={3} maxLength={50}
+              <TextInput label="Usuario" placeholder={EXAMPLES.userName} description="Sin espacios" required data-autofocus autoCapitalize="none" minLength={3} maxLength={50}
                 pattern="[A-Za-z0-9._\-]+" value={form.username || ''} onChange={(e) => setForm({ ...form, username: e.target.value })} />
             )}
-            <TextInput label="Nombre completo" value={form.full_name || ''} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            <TextInput label="Nombre completo" placeholder={EXAMPLES.userFullName} value={form.full_name || ''} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
             <div>
               <Text size="sm" fw={500} mb={4}>Rol</Text>
               <SegmentedControl fullWidth data={ROLES} value={form.role} onChange={(role) => setForm({ ...form, role })} />

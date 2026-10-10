@@ -326,7 +326,56 @@ def test_sales_report(admin, catalog):
     assert data["by_day"] == [{"date": today, "total": 3.99, "count": 2}]
     assert {p["method"] for p in data["by_payment_method"]} == {"Efectivo", "Pago móvil"}
     assert data["by_category"][0]["category"] == "Bebidas"
-    assert data["top_products"][0]["name"] == "Refresco"
+    assert "top_products" not in data  # El detalle por producto está en /reports/products
+
+
+def test_product_rankings_by_units_and_revenue(admin, catalog):
+    category = catalog["category"]["category_id"]
+    soda, water = catalog["soda"]["product_id"], catalog["water"]["product_id"]
+    perfumery = admin.post("/api/categories", json={"name": "Perfumería"}).json()["category_id"]
+
+    def create(name, price, cost, category_id, brand=None):
+        return admin.post("/api/products", json={
+            "name": name, "brand": brand, "price": price, "cost": cost, "stock": 10, "category_id": category_id,
+        }).json()["product_id"]
+
+    perfume = create("Perfume floral", "25", "15", perfumery, brand="Natura")
+    soap = create("Jabón", "3", "1", category)
+    bill(admin, [{"product_id": water, "quantity": 4}, {"product_id": soda, "quantity": 1},
+                 {"product_id": perfume, "quantity": 2}, {"product_id": soap, "quantity": 4}])
+    voided = bill(admin, [{"product_id": soda, "quantity": 1}]).json()["bill_id"]
+    admin.post(f"/api/bills/{voided}/void", json={"reason": "prueba"})  # Las anuladas no cuentan
+
+    today = datetime.now(ZoneInfo(TZ)).date().isoformat()
+    params = {"date_from": today, "date_to": today, "tz": TZ}
+
+    # El reporte viene ordenado por ingresos (sin impuesto)
+    items = admin.get("/api/reports/products", params=params).json()["items"]
+    assert [p["name"] for p in items] == ["Perfume floral", "Jabón", "Agua", "Refresco"]
+    first = items[0]
+    assert (first["quantity"], first["total"], first["profit"]) == (2, 50.0, 20.0)
+    assert (first["category"], first["brand"]) == ("Perfumería", "Natura")
+    assert next(p for p in items if p["name"] == "Refresco")["quantity"] == 1
+
+    # El inicio ordena por unidades; ante empate gana el que dejó más dinero (Jabón 4 = Agua 4)
+    top = admin.get("/api/reports/dashboard", params={"tz": TZ}).json()["top_products"]
+    assert [p["name"] for p in top] == ["Jabón", "Agua", "Perfume floral", "Refresco"]
+
+    # Filtro por categoría
+    only = admin.get("/api/reports/products", params={**params, "category_id": perfumery}).json()
+    assert only["category"] == "Perfumería" and [p["name"] for p in only["items"]] == ["Perfume floral"]
+    drinks = admin.get("/api/reports/products", params={**params, "category_id": category}).json()
+    assert [p["name"] for p in drinks["items"]] == ["Jabón", "Agua", "Refresco"]
+    empty = admin.post("/api/categories", json={"name": "Sin ventas"}).json()["category_id"]
+    assert admin.get("/api/reports/products", params={**params, "category_id": empty}).json()["items"] == []
+    assert admin.get("/api/reports/products", params={**params, "category_id": 9999}).status_code == 404
+
+    # Otro período sin ventas, y solo para administradores
+    assert admin.get("/api/reports/products", params={"date_from": "2020-01-01", "date_to": "2020-01-31", "tz": TZ}).json()["items"] == []
+
+
+def test_only_admin_sees_product_rankings(cashier):
+    assert cashier.get("/api/reports/products", params={"date_from": "2026-01-01", "date_to": "2026-01-31"}).status_code == 403
 
 
 def test_dashboard_and_inventory(admin, catalog):

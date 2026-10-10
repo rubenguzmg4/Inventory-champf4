@@ -10,6 +10,7 @@ import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { notifyError, notifySuccess } from '../notify';
 import { useApi } from '../useApi';
+import { EXAMPLES } from '../examples';
 
 export default function ClientsPage() {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ export default function ClientsPage() {
         <Button leftSection={<IconPlus size={16} />} onClick={() => setModal({})}>Nuevo cliente</Button>
       </PageHeader>
       <Card padding="md" mb="md">
-        <TextInput placeholder="Buscar por cédula, nombre o apellido" leftSection={<IconSearch size={16} />}
+        <TextInput placeholder={EXAMPLES.clientListSearch} leftSection={<IconSearch size={16} />}
           value={search} onChange={(e) => setSearch(e.target.value)} />
       </Card>
       <Card padding={0}>

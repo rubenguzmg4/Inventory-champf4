@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Button, Center, Paper, PasswordInput, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from '@mantine/core';
 import { IconAlertCircle, IconRocket } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
+import { EXAMPLES } from '../examples';
 
 /** Primera vez que se abre la aplicación: nombre del negocio y usuario administrador. */
 export default function SetupPage() {
@@ -37,10 +38,10 @@ export default function SetupPage() {
               <Text c="dimmed">Configura tu negocio y crea el usuario administrador. Luego podrás subir tu logo y elegir los colores.</Text>
             </div>
             {error && <Alert color="red" icon={<IconAlertCircle size={18} />} style={{ whiteSpace: 'pre-line' }}>{error}</Alert>}
-            <TextInput label="Nombre del negocio" required autoFocus value={form.business_name} onChange={set('business_name')} maxLength={150} />
+            <TextInput label="Nombre del negocio" required autoFocus placeholder={EXAMPLES.setupBusinessName} value={form.business_name} onChange={set('business_name')} maxLength={150} />
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <TextInput label="Tu nombre" value={form.full_name} onChange={set('full_name')} maxLength={100} />
-              <TextInput label="Usuario" description="Sin espacios. Ej: admin" required autoCapitalize="none"
+              <TextInput label="Tu nombre" placeholder={EXAMPLES.setupFullName} value={form.full_name} onChange={set('full_name')} maxLength={100} />
+              <TextInput label="Usuario" placeholder={EXAMPLES.setupUsername} description="Sin espacios" required autoCapitalize="none"
                 value={form.username} onChange={set('username')} minLength={3} maxLength={50} pattern="[A-Za-z0-9._\-]+" />
               <PasswordInput label="Contraseña" description="Mínimo 6 caracteres" required minLength={6}
                 value={form.password} onChange={set('password')} />

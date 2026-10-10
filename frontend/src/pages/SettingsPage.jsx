@@ -11,6 +11,7 @@ import { useSettings } from '../context/SettingsContext';
 import { notifyError, notifySuccess } from '../notify';
 import { COLOR_PRESETS, sidebarVars } from '../theme';
 import { formatDate, formatDateTime, formatRate } from '../utils/format';
+import { EXAMPLES } from '../examples';
 
 const FIELDS = [
   'business_name', 'tax_id', 'address', 'phone', 'email', 'invoice_footer', 'currency_symbol', 'tax_name', 'tax_rate',
@@ -241,7 +242,7 @@ export default function SettingsPage() {
                     <div>
                       <ColorInput label="Color de la barra lateral" description="Vacío = color neutro" format="hex"
                         swatches={['#1c3d5a', '#1f3b2c', '#3b2417', '#2a1f4d', '#3d1a2a', '#123a40', '#212529', '#ffffff', '#f1f3f5']}
-                        swatchesPerRow={9} value={form.sidebar_color || ''} onChange={set('sidebar_color')} placeholder="Neutro" />
+                        swatchesPerRow={9} value={form.sidebar_color || ''} onChange={set('sidebar_color')} placeholder={EXAMPLES.sidebarColor} />
                       {form.sidebar_color && (
                         <Button variant="subtle" size="compact-xs" mt={4} onClick={() => set('sidebar_color')('')}>Usar color neutro</Button>
                       )}
@@ -279,13 +280,13 @@ export default function SettingsPage() {
             <Text size="sm" c="dimmed" mb="md">Estos datos aparecen en el encabezado de las facturas.</Text>
             <Stack>
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <TextInput label="Nombre del negocio" required value={form.business_name} onChange={setText('business_name')} maxLength={150} />
-                <TextInput label="RIF / Identificación fiscal" value={form.tax_id} onChange={setText('tax_id')} maxLength={50} />
-                <TextInput label="Teléfono" value={form.phone} onChange={setText('phone')} maxLength={50} />
-                <TextInput label="Correo" type="email" value={form.email} onChange={setText('email')} maxLength={120} />
+                <TextInput label="Nombre del negocio" required placeholder={EXAMPLES.businessName} value={form.business_name} onChange={setText('business_name')} maxLength={150} />
+                <TextInput label="RIF / Identificación fiscal" placeholder={EXAMPLES.businessTaxId} value={form.tax_id} onChange={setText('tax_id')} maxLength={50} />
+                <TextInput label="Teléfono" placeholder={EXAMPLES.businessPhone} value={form.phone} onChange={setText('phone')} maxLength={50} />
+                <TextInput label="Correo" type="email" placeholder={EXAMPLES.businessEmail} value={form.email} onChange={setText('email')} maxLength={120} />
               </SimpleGrid>
-              <Textarea label="Dirección" autosize minRows={2} value={form.address} onChange={setText('address')} />
-              <Textarea label="Mensaje al pie de la factura" autosize minRows={2} value={form.invoice_footer} onChange={setText('invoice_footer')} />
+              <Textarea label="Dirección" placeholder={EXAMPLES.businessAddress} autosize minRows={2} value={form.address} onChange={setText('address')} />
+              <Textarea label="Mensaje al pie de la factura" placeholder={EXAMPLES.invoiceFooter} autosize minRows={2} value={form.invoice_footer} onChange={setText('invoice_footer')} />
             </Stack>
           </Card>
         </Tabs.Panel>
@@ -317,7 +318,7 @@ export default function SettingsPage() {
                   <RateStatus saved={saved} active={saved.exchange_rate_mode === 'bcv'} onRefresh={refreshRate} refreshing={refreshing} />
                 ) : (
                   <NumberInput label={`Tasa (${form.secondary_currency_symbol || 'Bs.'} por 1 ${form.currency_symbol || '$'})`} min={0}
-                    decimalScale={4} value={form.exchange_rate ?? ''} onChange={set('exchange_rate')} placeholder="Ej. 874,73"
+                    decimalScale={4} value={form.exchange_rate ?? ''} onChange={set('exchange_rate')} placeholder={EXAMPLES.exchangeRate}
                     description="Escribe la tasa que quieras usar; se mantiene hasta que la cambies" />
                 )}
               </Stack>

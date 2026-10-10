@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useMoney } from '../context/SettingsContext';
 import { notifyError, notifySuccess } from '../notify';
 import { fold } from '../utils/format';
+import { EXAMPLES } from '../examples';
 
 /**
  * Registrar mercancía que llegó (suma stock). Se puede abrir con un producto y
@@ -64,7 +65,7 @@ export default function EntryModal({ opened, onClose, products, productId, quant
     <Modal opened={opened} onClose={onClose} title="Registrar entrada de mercancía" size="lg">
       <form onSubmit={submit}>
         <Stack>
-          <Select label="Producto" placeholder="Buscar producto..." data={options} searchable required
+          <Select label="Producto" placeholder={EXAMPLES.entryProduct} data={options} searchable required
             value={form.product_id} onChange={selectProduct} nothingFoundMessage="Sin resultados"
             filter={({ options, search }) => options.filter((o) => fold(o.label).includes(fold(search)))} />
           {selected && (
@@ -78,9 +79,9 @@ export default function EntryModal({ opened, onClose, products, productId, quant
               value={form.quantity} onChange={(v) => setForm({ ...form, quantity: v })} />
             <NumberInput label={`Costo unitario (${symbol})`} description="Actualiza el costo del producto"
               min={0} decimalScale={2} value={form.unit_cost} onChange={(v) => setForm({ ...form, unit_cost: v })} />
-            <TextInput label="Proveedor" value={form.supplier || ''} maxLength={150}
+            <TextInput label="Proveedor" placeholder={EXAMPLES.entrySupplier} value={form.supplier || ''} maxLength={150}
               onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
-            <TextInput label="Nota / N° de factura del proveedor" value={form.note || ''}
+            <TextInput label="Nota / N° de factura del proveedor" placeholder={EXAMPLES.entryNote} value={form.note || ''}
               onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </SimpleGrid>
           {total > 0 && <Alert variant="light">Costo total de la entrada: <b>{money(total)}</b></Alert>}

@@ -11,14 +11,15 @@ import ClientPicker from '../components/ClientPicker';
 import { useMoney, useSettings } from '../context/SettingsContext';
 import { notifyError } from '../notify';
 import { useApi } from '../useApi';
-import { billNumber, fold, formatDate, formatNumber, formatRate } from '../utils/format';
+import { billNumber, bsAmounts, fold, formatDate, formatNumber, formatRate } from '../utils/format';
+import { EXAMPLES } from '../examples';
 
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export default function PosPage() {
   const navigate = useNavigate();
   const { settings } = useSettings();
-  const { money, secondary, rate } = useMoney();
+  const { money, secondaryMoney, rate } = useMoney();
   const { data: products, reload: reloadProducts } = useApi('/products');
   const { data: categories } = useApi('/categories');
   const searchRef = useRef(null);
@@ -88,6 +89,7 @@ export default function PosPage() {
   const taxRate = Number(settings.tax_rate) || 0;
   const tax = round2((subtotal * taxRate) / 100);
   const total = round2(subtotal + tax);
+  const bs = bsAmounts({ subtotal, tax_rate: taxRate, exchange_rate: rate }); // Mismo cálculo que la factura
   const units = cart.reduce((sum, l) => sum + l.quantity, 0);
 
   const submit = async () => {
@@ -136,7 +138,7 @@ export default function PosPage() {
               ref={searchRef}
               size="md"
               autoFocus
-              placeholder="Buscar por nombre o código de barras"
+              placeholder={EXAMPLES.posSearch}
               leftSection={<IconSearch size={18} />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -228,14 +230,21 @@ export default function PosPage() {
                   <Text fw={700} size="lg">Total</Text>
                   <Text fw={800} fz={28} c="brand" className="money">{money(total)}</Text>
                 </Group>
-                {rate > 0 && (
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">
-                      Tasa {settings.exchange_rate_mode === 'bcv' ? 'BCV ' : ''}{formatRate(rate)}
-                      {settings.exchange_rate_date ? ` · ${formatDate(settings.exchange_rate_date)}` : ''}
-                    </Text>
-                    <Text size="sm" fw={600} className="money">{secondary(total)}</Text>
-                  </Group>
+                {bs && (
+                  <>
+                    <Group justify="space-between">
+                      <Text size="xs" c="dimmed">
+                        Tasa {settings.exchange_rate_mode === 'bcv' ? 'BCV ' : ''}{formatRate(rate)}
+                        {settings.exchange_rate_date ? ` · ${formatDate(settings.exchange_rate_date)}` : ''}
+                      </Text>
+                      <Text size="sm" fw={600} className="money">{secondaryMoney(bs.total)}</Text>
+                    </Group>
+                    {taxRate > 0 && (
+                      <Text size="xs" c="dimmed" ta="right" className="money">
+                        Subtotal {secondaryMoney(bs.subtotal)} · {settings.tax_name} {secondaryMoney(bs.tax)}
+                      </Text>
+                    )}
+                  </>
                 )}
               </Stack>
 
@@ -247,7 +256,7 @@ export default function PosPage() {
                   </Group>
                 </Chip.Group>
               </div>
-              <Textarea placeholder="Nota (opcional)" autosize minRows={1} maxRows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+              <Textarea placeholder={EXAMPLES.posNote} autosize minRows={1} maxRows={3} value={note} onChange={(e) => setNote(e.target.value)} />
               <Button size="lg" fullWidth leftSection={<IconCheck size={20} />} loading={submitting}
                 disabled={!cart.length || !client} onClick={submit}>
                 Cobrar {cart.length ? money(total) : ''}
@@ -277,9 +286,7 @@ export default function PosPage() {
             <Title order={3}>¡Venta registrada!</Title>
             <Text c="dimmed">Factura N° {billNumber(created.bill_id)} · {created.client.name} {created.client.lastname}</Text>
             <Text fw={800} fz={32} className="money">{money(created.total)}</Text>
-            {secondary(created.total, created.exchange_rate) && (
-              <Text c="dimmed">{secondary(created.total, created.exchange_rate)}</Text>
-            )}
+            {bsAmounts(created) && <Text c="dimmed">{secondaryMoney(bsAmounts(created).total)}</Text>}
             <Group grow w="100%" mt="sm">
               <Button variant="default" leftSection={<IconPrinter size={18} />}
                 onClick={() => navigate(`/facturas/${created.bill_id}?imprimir=1`)}>

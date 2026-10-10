@@ -1,5 +1,5 @@
 import { useSettings } from '../context/SettingsContext';
-import { billNumber, formatDateTime, formatMoney, formatNumber, formatRate } from '../utils/format';
+import { billNumber, bsAmounts, formatDateTime, formatMoney, formatNumber, formatRate } from '../utils/format';
 import './invoice.css';
 
 /**
@@ -11,6 +11,8 @@ export default function Invoice({ bill, format = 'a4' }) {
   const symbol = settings.currency_symbol || '$';
   const money = (value) => formatMoney(value, symbol);
   const rate = Number(bill.exchange_rate) || 0;
+  const bs = bsAmounts(bill);
+  const bsMoney = (value) => formatMoney(value, settings.secondary_currency_symbol);
   const client = bill.client;
   const clientName = `${client.name} ${client.lastname}`.trim();
   const taxLabel = `${settings.tax_name || 'IVA'} (${formatNumber(bill.tax_rate)}%)`;
@@ -73,13 +75,35 @@ export default function Invoice({ bill, format = 'a4' }) {
       </table>
 
       <section className="invoice-totals">
-        <div><span>Subtotal</span><span>{money(bill.subtotal)}</span></div>
-        {Number(bill.tax_rate) > 0 && <div><span>{taxLabel}</span><span>{money(bill.tax_amount)}</span></div>}
-        <div className="invoice-total"><span>TOTAL</span><span>{money(bill.total)}</span></div>
-        {rate > 0 && (
+        <table className="invoice-totals-table">
+          {bs && (
+            <thead>
+              <tr><th /><th>{symbol}</th><th>{settings.secondary_currency_symbol}</th></tr>
+            </thead>
+          )}
+          <tbody>
+            <tr>
+              <td>Subtotal</td>
+              <td>{money(bill.subtotal)}</td>
+              {bs && <td>{bsMoney(bs.subtotal)}</td>}
+            </tr>
+            {Number(bill.tax_rate) > 0 && (
+              <tr>
+                <td>{taxLabel}</td>
+                <td>{money(bill.tax_amount)}</td>
+                {bs && <td>{bsMoney(bs.tax)}</td>}
+              </tr>
+            )}
+            <tr className="invoice-total">
+              <td>TOTAL</td>
+              <td>{money(bill.total)}</td>
+              {bs && <td>{bsMoney(bs.total)}</td>}
+            </tr>
+          </tbody>
+        </table>
+        {bs && (
           <div className="invoice-secondary">
-            <span>Total en {settings.secondary_currency_symbol} (tasa {formatRate(rate)})</span>
-            <span>{formatMoney(bill.total * rate, settings.secondary_currency_symbol)}</span>
+            Tasa de cambio: {formatRate(rate)} {settings.secondary_currency_symbol} por 1 {symbol}
           </div>
         )}
       </section>

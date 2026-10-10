@@ -4,6 +4,7 @@ import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { IconUserPlus } from '@tabler/icons-react';
 import { useApi } from '../useApi';
 import ClientFormModal from './ClientFormModal';
+import { EXAMPLES } from '../examples';
 
 const label = (c) => `${c.name} ${c.lastname}`.trim() + ` · ${c.client_id}`;
 
@@ -25,7 +26,7 @@ export default function ClientPicker({ value, onChange }) {
     <Group gap="xs" wrap="nowrap" align="flex-end">
       <Select
         label="Cliente"
-        placeholder="Buscar por cédula o nombre"
+        placeholder={EXAMPLES.clientPickerSearch}
         searchable
         style={{ flex: 1 }}
         data={clients.map((c) => ({ value: c.client_id, label: label(c) }))}

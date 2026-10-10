@@ -48,28 +48,45 @@ def _sales_by_day(db: Session, date_from: date, date_to: date, tz: str) -> list[
     ]
 
 
-def _top_products(db: Session, start: datetime, end: datetime, limit: int) -> list[dict]:
+def _top_products(
+    db: Session, start: datetime, end: datetime, limit: int, order_by: str = "revenue", category_id: int | None = None
+) -> list[dict]:
+    """Productos vendidos en el período, de mayor a menor por unidades ('units') o por ingresos ('revenue')."""
     cost = func.coalesce(Detail.unit_cost, 0)
-    rows = (
+    units = func.sum(Detail.quantity)
+    revenue = func.sum(Detail.subtotal)
+    query = (
         db.query(
             Detail.product_id,
             Product.name,
             Product.code,
-            func.sum(Detail.quantity),
-            func.sum(Detail.subtotal),
+            Product.brand,
+            models.Category.name,
+            units,
+            revenue,
             func.sum(Detail.subtotal - Detail.quantity * cost),
         )
         .join(Bill, Detail.bill_id == Bill.bill_id)
         .join(Product, Detail.product_id == Product.product_id)
+        .join(models.Category, Product.category_id == models.Category.category_id)
         .filter(*_paid_in(start, end))
-        .group_by(Detail.product_id, Product.name, Product.code)
-        .order_by(func.sum(Detail.subtotal).desc())
+    )
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+    # El segundo criterio desempata: ante igual cantidad gana el que dejó más dinero (y viceversa)
+    order = (units.desc(), revenue.desc()) if order_by == "units" else (revenue.desc(), units.desc())
+    rows = (
+        query.group_by(Detail.product_id, Product.name, Product.code, Product.brand, models.Category.name)
+        .order_by(*order, Product.name)
         .limit(limit)
         .all()
     )
     return [
-        {"product_id": pid, "name": name, "code": code, "quantity": int(qty), "total": float(total), "profit": float(profit)}
-        for pid, name, code, qty, total, profit in rows
+        {
+            "product_id": pid, "name": name, "code": code, "brand": brand, "category": category,
+            "quantity": int(qty), "total": float(total), "profit": float(profit),
+        }
+        for pid, name, code, brand, category, qty, total, profit in rows
     ]
 
 
@@ -112,7 +129,7 @@ def dashboard(tz: str = "UTC", db: Session = Depends(get_db)):
         "low_stock_count": low_stock,
         "out_of_stock_count": out_of_stock,
         "sales_by_day": _sales_by_day(db, today - timedelta(days=29), today, tz),
-        "top_products": _top_products(db, *date_range(month_start, today, zone), limit=5),
+        "top_products": _top_products(db, *date_range(month_start, today, zone), limit=5, order_by="units"),
         "recent_bills": [schemas.BillSummary.model_validate(b).model_dump(mode="json") for b in recent],
     }
 
@@ -202,7 +219,32 @@ def sales_report(date_from: date, date_to: date, tz: str = "UTC", db: Session = 
         "by_category": [
             {"category": name, "total": float(t), "quantity": int(q)} for name, t, q in by_category
         ],
-        "top_products": _top_products(db, start, end, limit=100),
+    }
+
+
+@router.get("/products")
+def products_report(
+    date_from: date,
+    date_to: date,
+    tz: str = "UTC",
+    category_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Productos vendidos en un período, con unidades, ingresos (sin impuesto) y ganancia. Con `category_id`
+    solo los de esa categoría. Viene ordenado por ingresos; la pantalla lo reordena por unidades.
+    """
+    if (date_to - date_from).days > 731:
+        raise HTTPException(status_code=400, detail="El período no puede ser mayor a 2 años.")
+    category = None
+    if category_id:
+        category = db.get(models.Category, category_id)
+        if not category:
+            raise HTTPException(status_code=404, detail="Categoría no encontrada.")
+    start, end = date_range(date_from, date_to, get_zone(tz))
+    return {
+        "category": category.name if category else None,
+        "items": _top_products(db, start, end, limit=500, order_by="revenue", category_id=category_id),
     }
 
 

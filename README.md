@@ -13,14 +13,16 @@ desde otros dispositivos de la misma red (celular, tablet u otra computadora) co
   cuándo se actualizó, forzarla con "Actualizar ahora" o cambiar a modo manual y escribir la tasa que prefieras).
   Necesita internet; si falla, se conserva la última tasa y el inicio muestra un aviso.
 - **Facturas:** historial con filtros, impresión en hoja (A4/carta) o ticket de 80 mm, con el logo del local,
-  y anulación (devuelve los productos al inventario).
+  subtotal, IVA y total en dólares **y en bolívares** (con la tasa del momento), y anulación (devuelve los
+  productos al inventario).
 - **Productos y categorías:** código automático (000001, 000002… o el código de barras que escribas), marca
   (con filtro por marca y por categoría), precios, costos, margen, stock mínimo, ajustes de stock con motivo
   (conteo físico, merma…) e historial de movimientos de cada producto (kárdex).
 - **Reposición de stock:** lista de productos agotados, bajo el mínimo o que se agotarán pronto, con la
   **cantidad sugerida a pedir** según las ventas de los últimos 30 días. Registro de entradas de mercancía.
-- **Reportes:** ventas por día, forma de pago, categoría, cajero y producto, ganancia bruta, inventario
-  valorizado. Se pueden imprimir o descargar en CSV (se abre en Excel).
+- **Reportes:** ventas por día, forma de pago, categoría y cajero, ganancia bruta e inventario valorizado.
+  Productos más vendidos **por unidades** y **por dinero generado**, que se pueden filtrar por categoría
+  (por ejemplo, el más vendido de Perfumería). El Inicio muestra lo más vendido del mes por unidades. Se pueden imprimir o descargar en CSV (se abre en Excel).
 - **Usuarios:** administradores y cajeros (los cajeros solo facturan y consultan). Un usuario sin historial se
   elimina; si ya emitió facturas se desactiva para no perder el historial.
 - **Personalización:** logo del local, color principal, color de la barra lateral, modo claro/oscuro y bordes.
@@ -51,6 +53,36 @@ docker compose down
 
 > Los datos **no** se borran al detener la aplicación: quedan guardados en este equipo, en un volumen de Docker.
 > Solo se perderían con `docker compose down -v` (¡no uses `-v`!).
+
+## Instalar en otro equipo con Windows 11
+
+No necesitas instalar PostgreSQL, Python ni Node: todo va dentro de Docker.
+
+1. **Instala Docker Desktop** desde https://www.docker.com/products/docker-desktop/. Acepta WSL 2 si lo ofrece,
+   reinicia cuando lo pida y abre Docker Desktop (espera a que indique que el motor está en marcha). Si da un error
+   de virtualización, actívala en la BIOS del equipo (Intel VT-x / AMD-V).
+2. **Copia el proyecto** al equipo:
+   - Con Git: instala [Git para Windows](https://git-scm.com/download/win) y en PowerShell ejecuta
+     `git clone https://github.com/rubenguzmg4/Inventory-champf4.git` (el repositorio es privado: abrirá el
+     navegador para que inicies sesión en GitHub).
+   - Sin Git: en la página del repositorio, botón **Code → Download ZIP**, y descomprímelo.
+3. **Abre PowerShell dentro de la carpeta** del proyecto (clic derecho en la carpeta → "Abrir en Terminal") y ejecuta:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+   La primera vez tarda varios minutos y necesita internet.
+4. Abre **http://localhost:8000** en el navegador. Verás la pantalla de bienvenida (equipo nuevo, sin datos).
+5. Para que se encienda sola con el equipo: en Docker Desktop, **Settings → General → "Start Docker Desktop when
+   you sign in"**. La aplicación y la base de datos se reinician solas con Docker.
+6. Para entrar desde otros dispositivos de la red, usa `http://IP-DEL-EQUIPO:8000` (la IP sale con `ipconfig`,
+   "Dirección IPv4"). Si no conecta, permite el puerto en el Firewall de Windows ejecutando PowerShell **como
+   administrador**:
+
+   ```bash
+   New-NetFirewallRule -DisplayName "Inventario" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+   ```
 
 ## 3. Usarla desde otros dispositivos
 
@@ -87,6 +119,16 @@ docker compose up -d --build
 
 Los cambios en la base de datos (tablas o columnas nuevas) se aplican solos al iniciar,
 gracias a las migraciones de `backend/alembic/versions/`.
+
+## Cambiar los textos de ejemplo (adaptarlos al tipo de negocio)
+
+Los textos grises que aparecen dentro de los campos vacíos (por ejemplo "Ej. Shampoo reparador 400 ml") están
+todos en un solo archivo: **`frontend/src/examples.js`**. Ahí también están los motivos de ajuste de stock y el
+mensaje de "crea tu primera categoría". Edita el texto entre comillas, guarda y reconstruye:
+
+```bash
+docker compose up -d --build
+```
 
 ## Configuración opcional
 

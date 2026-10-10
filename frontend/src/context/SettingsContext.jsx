@@ -90,9 +90,8 @@ export function useMoney() {
       secondarySymbol,
       rate: Number(settings.exchange_rate) || 0,
       money: (value) => formatMoney(value, symbol),
-      // Monto convertido a la segunda moneda (ej. bolívares) con la tasa indicada
-      secondary: (value, rate = settings.exchange_rate) =>
-        Number(rate) > 0 ? formatMoney(Number(value) * Number(rate), secondarySymbol) : null,
+      // Da formato a un monto ya convertido a la segunda moneda (ej. bolívares); ver bsAmounts()
+      secondaryMoney: (value) => formatMoney(value, secondarySymbol),
     };
   }, [settings.currency_symbol, settings.secondary_currency_symbol, settings.exchange_rate]);
 }

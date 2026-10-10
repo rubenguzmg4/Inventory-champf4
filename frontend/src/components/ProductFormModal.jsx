@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useMoney } from '../context/SettingsContext';
 import { notifyError, notifySuccess } from '../notify';
 import { useApi } from '../useApi';
+import { EXAMPLES } from '../examples';
 
 const EMPTY = { code: '', name: '', brand: '', description: '', price: '', cost: '', stock: 0, min_stock: 0, category_id: null, is_active: true };
 
@@ -65,15 +66,15 @@ export default function ProductFormModal({ opened, onClose, product, categories,
               placeholder={editing ? '' : 'Automático'} required={editing}
               description={editing ? 'No puede quedar vacío' : 'Vacío = se asigna solo'}
               onChange={(e) => set('code')(e.target.value)} />
-            <TextInput label="Nombre" required value={form.name} maxLength={150} style={{ gridColumn: 'span 2' }}
+            <TextInput label="Nombre" required placeholder={EXAMPLES.productName} value={form.name} maxLength={150} style={{ gridColumn: 'span 2' }}
               onChange={(e) => set('name')(e.target.value)} data-autofocus />
           </SimpleGrid>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <Select label="Categoría" required placeholder="Elegir categoría" searchable
+            <Select label="Categoría" required placeholder={EXAMPLES.productCategory} searchable
               data={(categories || []).map((c) => ({ value: String(c.category_id), label: c.name }))}
               value={form.category_id} onChange={set('category_id')}
               nothingFoundMessage="No hay categorías. Créalas en el menú Categorías." />
-            <Autocomplete label="Marca" placeholder="Ej. Polar (opcional)" maxLength={100}
+            <Autocomplete label="Marca" placeholder={EXAMPLES.productBrand} maxLength={100}
               data={brands || []} value={form.brand} onChange={set('brand')} />
           </SimpleGrid>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -90,7 +91,7 @@ export default function ProductFormModal({ opened, onClose, product, categories,
             <NumberInput label="Stock mínimo" min={0} allowDecimal={false} value={form.min_stock} onChange={set('min_stock')}
               description="Al llegar a este número se avisa para reponer" />
           </SimpleGrid>
-          <Textarea label="Descripción" autosize minRows={2} value={form.description}
+          <Textarea label="Descripción" placeholder={EXAMPLES.productDescription} autosize minRows={2} value={form.description}
             onChange={(e) => set('description')(e.target.value)} />
           {editing && (
             <Switch label="Producto activo (se puede vender)" checked={form.is_active}
