@@ -94,22 +94,62 @@ Cualquier celular, tablet o computadora conectado a la **misma red (Wi-Fi)** pue
 
 Si no conecta, permite el puerto 8000 en el firewall del equipo.
 
-## 4. Respaldos (¡importante!)
+## 4. Respaldos automáticos (¡importante!)
 
-Crear un respaldo (queda en la carpeta `respaldos/` del proyecto):
+**Qué hace:** todos los días a las **6:30 p. m.** (hora de Venezuela) guarda una copia de toda la base de datos
+(productos, facturas, clientes, usuarios, logo y configuración) en la carpeta `respaldos/` del proyecto, y conserva
+solo las **últimas 20 copias** (borra las más viejas). Cada archivo se llama `respaldo_AAAA-MM-DD_HHMM.dump`.
+Si el equipo está apagado a esa hora, la copia se hace cuando se encienda. Además se hace una al iniciar por
+primera vez. No hay que acordarse de nada: es un servicio más de Docker.
 
-```bash
-docker compose exec db sh -c 'pg_dump -U inventory -d inventory_db -Fc -f /respaldos/respaldo_$(date +%Y-%m-%d_%H%M).dump'
+**Cambiar la carpeta, la hora o la cantidad.** Copia `.env.example` como `.env` (misma carpeta que
+`docker-compose.yml`) y edita estas líneas; luego ejecuta `docker compose up -d`:
+
+```
+BACKUP_DIR=C:/Respaldos      # carpeta donde se guardan (en Windows, con barras normales /)
+BACKUP_TIME=18:30            # hora en formato 24 h
+BACKUP_KEEP=20               # cuántas copias se conservan
 ```
 
-Copia esa carpeta a un pendrive o a la nube con frecuencia. Para restaurar un respaldo
-(reemplaza los datos actuales por los del archivo):
+**Enviarlos a la nube con Google Drive.** Un respaldo en el mismo equipo no protege si el equipo se pierde, así que
+la carpeta debe sincronizarse con la nube:
+1. Instala **Google Drive para escritorio** e inicia sesión con la cuenta que tiene el espacio.
+2. Usa una carpeta normal del disco (por ejemplo `C:\Respaldos`, la misma de `BACKUP_DIR`) y en las preferencias de
+   Google Drive agrégala a las carpetas que se sincronizan con la nube. Los nombres exactos de los menús pueden
+   variar según la versión.
+3. **No pongas `BACKUP_DIR` dentro de la unidad virtual `G:` de Drive**: Docker suele fallar al escribir ahí.
+4. Comprueba en drive.google.com que aparecen los archivos `.dump`.
+
+**Comprobar que funciona:**
+
+```bash
+docker compose logs backup
+```
+
+**Hacer un respaldo ahora mismo** (por ejemplo, antes de actualizar el sistema):
+
+```bash
+docker compose exec backup /backup.sh now
+```
+
+**Restaurar** (recuperar datos o pasarlos a otro equipo). Esto **reemplaza todos los datos actuales** por los del archivo:
+1. En el equipo nuevo, instala Docker, descarga el proyecto e inícialo con `docker compose up -d --build`
+   (con el mismo `.env` si usas uno).
+2. Copia el archivo `.dump` que quieras recuperar a la carpeta de respaldos (`BACKUP_DIR`).
+3. Detén la aplicación, restaura y vuélvela a iniciar (cambia el nombre del archivo por el tuyo):
 
 ```bash
 docker compose stop app
-docker compose exec db pg_restore -U inventory -d inventory_db --clean --if-exists /respaldos/NOMBRE_DEL_ARCHIVO.dump
+```
+```bash
+docker compose exec backup /backup.sh restore respaldo_2026-10-12_1830.dump
+```
+```bash
 docker compose start app
 ```
+
+Si algo falla al restaurar, la base de datos queda como estaba. **Prueba una restauración de vez en cuando**: un
+respaldo que nunca se probó no es una garantía.
 
 ## 5. Actualizar después de cambiar el código
 
@@ -189,6 +229,7 @@ frontend/                Interfaz web (React + Mantine)
   src/pages/             Una pantalla por archivo
   src/components/        Piezas reutilizables (factura, formularios, menú…)
   src/theme.js           Colores y estilo (se generan a partir de la configuración)
+backup/                  Servicio de respaldos automáticos (script y su imagen)
 Dockerfile               Construye la imagen de la aplicación
 docker-compose.yml       Levanta la aplicación y la base de datos juntas
 ```

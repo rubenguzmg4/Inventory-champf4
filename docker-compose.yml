@@ -12,13 +12,31 @@ services:
     volumes:
       # Los datos quedan guardados en este equipo, en un volumen de Docker
       - db_data:/var/lib/postgresql/data
-      # Carpeta compartida para los respaldos (ver README)
-      - ./respaldos:/respaldos
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inventory -d inventory_db"]
       interval: 5s
       timeout: 5s
       retries: 20
+
+  # Respaldo automático de la base de datos: cada día a BACKUP_TIME guarda una copia en BACKUP_DIR
+  # y conserva solo las últimas BACKUP_KEEP (ver README, sección "Respaldos").
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: inventory_db
+      PGUSER: inventory
+      PGPASSWORD: ${DB_PASSWORD:-inventory}
+      BACKUP_TIME: ${BACKUP_TIME:-18:30}
+      BACKUP_KEEP: ${BACKUP_KEEP:-20}
+      TZ: ${TZ:-America/Caracas}
+    volumes:
+      # Carpeta del equipo donde quedan las copias. En Windows, por ejemplo: BACKUP_DIR=C:/Respaldos
+      - ${BACKUP_DIR:-./respaldos}:/respaldos
 
   app:
     build: .
